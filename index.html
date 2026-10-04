@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>UNO</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+</head>
+<body>
+
+<div id="app">
+  <section id="home" class="screen active">
+    <button id="settingsBtn" title="设置">⚙</button>
+    <h1>UNO</h1>
+    <input id="nameInput" placeholder="输入昵称" maxlength="8" autocomplete="off">
+    <button id="createBtn" class="btn-primary">创建房间</button>
+    <div class="divider">— 或 —</div>
+    <div class="join-row">
+      <input id="roomInput" placeholder="房间号" maxlength="6" autocomplete="off">
+      <button id="joinBtn">加入</button>
+    </div>
+  </section>
+
+  <section id="room" class="screen">
+    <div class="room-head">
+      <div class="label">房 间 号</div>
+      <div class="code" id="roomCode">----</div>
+      <div class="hint">将房间号告诉朋友，即可加入</div>
+    </div>
+    <ul id="playerList"></ul>
+    <button id="startBtn" class="btn-primary">开始游戏</button>
+    <div id="waitTip" class="hint" style="display:none">等待房主开始…</div>
+  </section>
+
+  <section id="game" class="screen">
+    <div id="opponents"></div>
+    <div id="status"></div>
+    <div id="table">
+      <div id="deck" class="card back">UNO</div>
+      <div id="discard" class="slot"></div>
+    </div>
+    <button id="unoBtn">UNO!</button>
+    <button id="passBtn">跳过回合</button>
+    <div id="myHand"></div>
+  </section>
+</div>
+
+<div id="topBarLeft">
+  <button id="exitBtn" class="top-btn" title="退出房间">←</button>
+  <button id="rulesBtn" class="top-btn" title="房规设置">📋</button>
+</div>
+
+<button id="chatToggleBtn" title="聊天">💬<span id="chatBadge" class="chat-badge">0</span></button>
+<div id="chatPanel">
+  <div class="chat-header"><span>聊 天</span><button id="chatCloseBtn">×</button></div>
+  <div id="chatMessages" class="chat-messages"><div class="chat-empty">暂无消息</div></div>
+  <div class="chat-input-row">
+    <input id="chatInput" placeholder="输入消息…" maxlength="100" autocomplete="off">
+    <button id="chatSendBtn">发送</button>
+  </div>
+</div>
+
+<div id="colorPicker" class="overlay">
+  <div class="picker-box">
+    <div class="picker-title">选择颜色</div>
+    <div class="color-grid">
+      <div class="swatch" data-color="red" style="background:var(--red)"></div>
+      <div class="swatch" data-color="yellow" style="background:var(--yellow)"></div>
+      <div class="swatch" data-color="green" style="background:var(--green)"></div>
+      <div class="swatch" data-color="blue" style="background:var(--blue)"></div>
+    </div>
+  </div>
+</div>
+
+<div id="challengeOverlay" class="overlay">
+  <div class="picker-box">
+    <div class="picker-title" id="challengeText">下家对你打出 +4</div>
+    <div style="display:flex;gap:10px;width:100%">
+      <button id="acceptDrawBtn" style="flex:1">摸4张</button>
+      <button id="challengeBtn" style="flex:1;background:#e76f51">质疑</button>
+    </div>
+  </div>
+</div>
+
+<div id="swapOverlay" class="overlay">
+  <div class="picker-box">
+    <div class="picker-title">选择一名玩家交换手牌</div>
+    <div id="swapList" style="display:flex;flex-direction:column;gap:8px;width:100%"></div>
+  </div>
+</div>
+
+<div id="overlay" class="overlay">
+  <div class="picker-box">
+    <div id="overlayTitle" class="picker-title"></div>
+    <div id="overlayScore" class="about-text" style="display:none;width:100%"></div>
+    <button id="overlayBtn" class="btn-primary"></button>
+  </div>
+</div>
+
+<div id="settingsPanel" class="overlay">
+  <div class="settings-box">
+    <div class="settings-title">设 置</div>
+    <div class="setting-item">
+      <div class="setting-label"><span>音量</span><span class="setting-value"><span id="volumeValue">100</span>%</span></div>
+      <div class="slider-row">
+        <span style="color:#9fc2b5;font-size:14px">🔈</span>
+        <input type="range" id="volumeSlider" min="0" max="100" value="100">
+        <span style="color:#9fc2b5;font-size:14px">🔊</span>
+      </div>
+    </div>
+    <div class="setting-item">
+      <div class="setting-label"><span>字体大小</span><span class="setting-value"><span id="fontValue">100</span>%</span></div>
+      <div class="slider-row">
+        <span style="color:#9fc2b5;font-size:12px">A</span>
+        <input type="range" id="fontSlider" min="80" max="150" value="100">
+        <span style="color:#9fc2b5;font-size:20px">A</span>
+      </div>
+    </div>
+    <div class="setting-item">
+      <div class="setting-label"><span>关于</span></div>
+      <div class="about-text">
+        <div class="about-title">UNO 联机版</div>
+        基于 PeerJS + WebRTC 构建<br>
+        无需服务器 · 完全免费<br>
+        <div style="height:1px;background:rgba(255,255,255,.08);margin:8px 0"></div>
+        © 2024 TYDS2013<br>
+        保留所有权利 · All Rights Reserved
+      </div>
+    </div>
+    <button id="settingsCloseBtn" class="btn-primary" style="max-width:none;width:100%">关闭</button>
+  </div>
+</div>
+
+<div id="rulesPanel" class="overlay">
+  <div class="settings-box">
+    <div class="settings-title">房 规</div>
+    <div class="setting-item">
+      <div class="setting-label"><span>游戏模式</span></div>
+      <div class="mode-group">
+        <label class="mode-option" data-mode="single">
+          <input type="radio" name="gameMode" value="single">
+          <span>单局制 · 一局定胜负</span>
+        </label>
+        <label class="mode-option" data-mode="score">
+          <input type="radio" name="gameMode" value="score">
+          <span>累积 500 分 · 分数制</span>
+        </label>
+        <label class="mode-option" data-mode="elimination">
+          <input type="radio" name="gameMode" value="elimination">
+          <span>淘汰制 · 输家观战</span>
+        </label>
+      </div>
+    </div>
+    <div class="rule-row">
+      <div>
+        <div class="rule-label">+2 / +4 堆叠</div>
+        <div class="rule-desc">允许用同类牌回应，累加罚抽</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="ruleStacking">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="rule-row">
+      <div>
+        <div class="rule-label">强制出牌</div>
+        <div class="rule-desc">摸到的牌可出时必须打出</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="ruleForcePlay">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="rule-row">
+      <div>
+        <div class="rule-label">7-0 规则</div>
+        <div class="rule-desc">7 换牌，0 顺时针传牌</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="ruleSevenZero">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <button id="rulesCloseBtn" class="btn-primary" style="max-width:none;width:100%">保存</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
