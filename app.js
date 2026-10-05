@@ -2,6 +2,15 @@
   'use strict';
 
   /* =========================================================
+     ⚠️【需要手动修改】Vercel 备用服务器地址
+     =========================================================
+     把你部署好的 Vercel PeerJS 服务器域名填在这里（不要带 https://）。
+     例如：'uno-peerjs-xyz.vercel.app'
+     这个地址会作为 PeerJS 官方服务器连接失败后的自动兜底。
+  */
+  const DEFAULT_VERCEL_HOST = 'uno-server.vercel.app';  // 👈 改这里
+
+  /* =========================================================
      1. 通用工具
      ========================================================= */
   function $(id) { return document.getElementById(id); }
@@ -29,14 +38,101 @@
     localStorage.setItem('uno_name', n);
     return n;
   }
-  function genRoomId() {
-    let id = '';
-    for (let i = 0; i < 4; i++) id += Math.floor(Math.random() * 10);
-    return id;
+  function showLoading(text, subtext) {
+    $('loadingText').innerHTML = esc(text || '正在连接…') +
+      (subtext ? '<strong>' + esc(subtext) + '</strong>' : '');
+    $('loadingOverlay').classList.add('show');
+  }
+  function hideLoading() {
+    $('loadingOverlay').classList.remove('show');
   }
 
   /* =========================================================
-     2. 全局状态
+     2. 信令服务器配置
+     ========================================================= */
+  const TURN_CONFIG = {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      {
+        urls: [
+          'turn:turn.evan-brass.net',
+          'turn:turn.evan-brass.net?transport=tcp',
+          'turns:turn.evan-brass.net:443?transport=tcp'
+        ],
+        username: 'user',
+        credential: 'password'
+      }
+    ]
+  };
+
+  function getVercelHost() {
+    return (localStorage.getItem('uno_vercel_host') || DEFAULT_VERCEL_HOST).trim();
+  }
+
+  const SERVERS = {
+    peerjs: {
+      id: 'peerjs',
+      label: 'PeerJS 官方',
+      prefix: 'P',
+      buildOptions: () => ({
+        debug: 0,
+        config: TURN_CONFIG
+      })
+    },
+    vercel: {
+      id: 'vercel',
+      label: 'Vercel 备用',
+      prefix: 'V',
+      buildOptions: () => {
+        const host = getVercelHost();
+        if (!host) return null;
+        return {
+          host: host,
+          port: 443,
+          path: '/',
+          secure: true,
+          key: 'peerjs',
+          debug: 0,
+          config: TURN_CONFIG
+        };
+      }
+    }
+  };
+
+  // 创建 Peer 实例（不带超时，超时逻辑在外面控制）
+  function createPeer(peerId, serverId) {
+    const cfg = SERVERS[serverId];
+    if (!cfg) return { error: new Error('未知服务器') };
+    const opts = cfg.buildOptions();
+    if (!opts) return { error: new Error('服务器未配置') };
+    try {
+      const peer = new Peer(peerId, opts);
+      return { peer };
+    } catch (e) {
+      return { error: e };
+    }
+  }
+
+  // 生成带前缀的房间号
+  function genRoomId(serverId) {
+    const prefix = SERVERS[serverId].prefix;
+    let digits = '';
+    for (let i = 0; i < 4; i++) digits += Math.floor(Math.random() * 10);
+    return prefix + digits;
+  }
+
+  // 解析房间号，返回 { serverId, fullRoomId }
+  function parseRoomId(input) {
+    const str = String(input || '').trim().toUpperCase();
+    if (!str) return null;
+    if (str[0] === 'P') return { serverId: 'peerjs', fullRoomId: 'P' + str.slice(1) };
+    if (str[0] === 'V') return { serverId: 'vercel', fullRoomId: 'V' + str.slice(1) };
+    return null; // 无前缀无效
+  }
+
+  /* =========================================================
+     3. 全局状态
      ========================================================= */
   const state = {
     peer: null,
@@ -52,11 +148,12 @@
     pendingWild: null,
     unreadCount: 0,
     lastChatLen: -1,
-    chatInitialized: false
+    chatInitialized: false,
+    usedServer: 'peerjs'  // 记录当前房间实际使用的服务器
   };
 
   /* =========================================================
-     3. 音效
+     4. 音效
      ========================================================= */
   let audioCtx = null;
   let globalVolume = parseFloat(localStorage.getItem('uno_volume') || '100') / 100;
@@ -91,7 +188,7 @@
   const sfxLose  = () => [440, 330, 220].forEach((f, i) => setTimeout(() => playTone(f, 0.25, 'sawtooth', 0.1), i * 150));
 
   /* =========================================================
-     4. 牌组
+     5. 牌组
      ========================================================= */
   function makeDeck() {
     const colors = ['red', 'yellow', 'green', 'blue'];
@@ -137,7 +234,7 @@
   }
 
   /* =========================================================
-     5. 逻辑辅助
+     6. 逻辑辅助
      ========================================================= */
   function myId() { return state.myPlayerId; }
   function myPlayer() {
@@ -191,7 +288,7 @@
   }
 
   /* =========================================================
-     6. 游戏核心（房主端）
+     7. 游戏核心
      ========================================================= */
   function pushSystemMessage(text) {
     const room = state.room;
@@ -584,6 +681,7 @@
       const st = {
         id: room.id, hostId: room.hostId, phase: room.phase,
         rules: room.rules,
+        serverId: room.serverId,
         players: room.players.map(pl => ({
           id: pl.id, name: pl.name, cardCount: pl.hand.length,
           isYou: pl.id === p.id, hand: pl.id === p.id ? pl.hand : undefined,
@@ -608,16 +706,29 @@
   }
 
   /* =========================================================
-     7. 网络层
+     8. 网络层（PeerJS 优先 + Vercel 自动兜底）
      ========================================================= */
   function createRoom() {
-    state.isHost = true;
-    state.roomId = genRoomId();
-    state.myPeerId = 'uno-host-' + state.roomId;
-    state.myPlayerId = state.myPeerId;
-    state.room = {
-      id: state.roomId, hostId: state.myPeerId, phase: 'waiting',
-      players: [{ id: state.myPeerId, name: getName(), hand: [], unoCalled: false, score: 0, alive: true }],
+    const primaryServer = 'peerjs';
+    const fallbackServer = 'vercel';
+
+    showLoading('正在连接 PeerJS 官方…', '若 8 秒内无响应，将自动切换到 Vercel 备用');
+
+    const hostDigits = Math.floor(1000 + Math.random() * 9000);  // 4 位数字
+
+    // 先把房间号占位显示，等确定服务器后再更新前缀
+    tryCreateOnServer(primaryServer, hostDigits, fallbackServer);
+  }
+
+  function tryCreateOnServer(serverId, hostDigits, fallbackServer) {
+    const roomId = SERVERS[serverId].prefix + hostDigits;
+    const myPeerId = 'uno-host-' + roomId;
+
+    // 初始化房间对象（但先不加入 players，等 peer 打开成功再正式生效）
+    const roomObj = {
+      id: roomId, hostId: myPeerId, phase: 'waiting',
+      serverId: serverId,
+      players: [{ id: myPeerId, name: getName(), hand: [], unoCalled: false, score: 0, alive: true }],
       deck: [], discard: [], topCard: null,
       currentColor: null, turnIndex: 0, direction: 1,
       drawnCardId: null, winnerId: null, winnerName: null, message: '',
@@ -627,37 +738,164 @@
       pendingChallenge: null, pendingSwap: null,
       eliminatedId: null, eliminatedName: null
     };
-    state.peer = new Peer(state.myPeerId, { debug: 0 });
-    state.peer.on('open', () => {
-      $('roomCode').textContent = state.roomId;
+
+    const { peer, error } = createPeer(myPeerId, serverId);
+    if (error || !peer) {
+      if (fallbackServer) {
+        showLoading('PeerJS 官方不可用', '正在尝试 Vercel 备用服务器…');
+        setTimeout(() => tryCreateOnServer(fallbackServer, hostDigits, null), 400);
+      } else {
+        hideLoading();
+        toast('所有信令服务器都不可用，请稍后再试');
+      }
+      return;
+    }
+
+    let opened = false;
+    const timeout = setTimeout(() => {
+      if (opened) return;
+      try { peer.destroy(); } catch (e) {}
+
+      if (fallbackServer) {
+        // 自动切换到 Vercel 备用
+        showLoading('PeerJS 官方超时', '正在尝试 Vercel 备用服务器…');
+        setTimeout(() => tryCreateOnServer(fallbackServer, hostDigits, null), 400);
+      } else {
+        hideLoading();
+        toast('无法连接信令服务器，请检查网络或稍后再试');
+      }
+    }, 8000);
+
+    peer.on('open', () => {
+      opened = true;
+      clearTimeout(timeout);
+
+      // 正式生效
+      state.isHost = true;
+      state.roomId = roomId;
+      state.myPeerId = myPeerId;
+      state.myPlayerId = myPeerId;
+      state.usedServer = serverId;
+      state.room = roomObj;
+      state.peer = peer;
+
+      // 监听连接
+      peer.on('connection', conn => {
+        conn.on('open', () => {
+          conn.on('data', data => handleClientMessage(conn, data));
+          conn.on('close', () => removePlayer(conn.peer));
+        });
+      });
+      peer.on('error', err => {
+        if (err.type === 'unavailable-id') {
+          toast('房间号冲突，请重试');
+          resetAndGoHome();
+        }
+      });
+
+      hideLoading();
+      $('roomCode').textContent = roomId;
+      const serverLabel = SERVERS[serverId].label +
+        (serverId === 'vercel' ? '（PeerJS 超时自动切换）' : '');
+      $('roomServerHint').textContent = '信令服务器：' + serverLabel;
       $('rulesBtn').classList.add('show');
       switchScreen('room');
       broadcastState();
     });
-    state.peer.on('connection', conn => {
-      conn.on('open', () => {
-        conn.on('data', data => handleClientMessage(conn, data));
-        conn.on('close', () => removePlayer(conn.peer));
-      });
+
+    peer.on('error', err => {
+      if (opened) return;
+      clearTimeout(timeout);
+      try { peer.destroy(); } catch (e) {}
+
+      if (fallbackServer) {
+        showLoading('PeerJS 官方出错', '正在尝试 Vercel 备用服务器…');
+        setTimeout(() => tryCreateOnServer(fallbackServer, hostDigits, null), 400);
+      } else {
+        hideLoading();
+        toast('连接信令服务器失败：' + (err.type || err.message || '未知错误'));
+      }
     });
-    state.peer.on('error', err => toast('创建房间失败：' + err.type));
   }
 
-  function joinRoom(rid) {
+  function joinRoom(inputRoomId) {
+    const parsed = parseRoomId(inputRoomId);
+    if (!parsed) {
+      toast('房间号格式不对，应以 P 或 V 开头');
+      return;
+    }
+
+    if (parsed.serverId === 'vercel' && !getVercelHost()) {
+      toast('房主使用了 Vercel 服务器，但你的备用地址未配置');
+      return;
+    }
+
+    const serverLabel = SERVERS[parsed.serverId].label;
+    showLoading('正在加入房间 ' + parsed.fullRoomId + '…', '使用 ' + serverLabel);
+
     state.isHost = false;
-    state.roomId = rid;
+    state.roomId = parsed.fullRoomId;
     state.myPeerId = 'uno-client-' + Math.random().toString(36).slice(2, 8);
     state.myPlayerId = state.myPeerId;
-    state.peer = new Peer(state.myPeerId, { debug: 0 });
-    state.peer.on('open', () => {
-      const hostId = 'uno-host-' + rid;
-      state.hostConn = state.peer.connect(hostId);
-      state.hostConn.on('open', () => state.hostConn.send({ type: 'join', name: getName() }));
+    state.usedServer = parsed.serverId;
+
+    const { peer, error } = createPeer(state.myPeerId, parsed.serverId);
+    if (error || !peer) {
+      hideLoading();
+      toast('无法创建连接：' + (error ? error.message : '未知'));
+      resetAndGoHome();
+      return;
+    }
+
+    let opened = false;
+    const timeout = setTimeout(() => {
+      if (opened) return;
+      try { peer.destroy(); } catch (e) {}
+      hideLoading();
+      toast('连接信令服务器超时，请检查网络');
+      resetAndGoHome();
+    }, 10000);
+
+    peer.on('open', () => {
+      opened = true;
+      clearTimeout(timeout);
+
+      state.peer = peer;
+      const hostId = 'uno-host-' + state.roomId;
+      state.hostConn = peer.connect(hostId);
+
+      let connOpened = false;
+      const connTimeout = setTimeout(() => {
+        if (connOpened) return;
+        hideLoading();
+        toast('无法连接到房主，请确认房间号');
+        try { peer.destroy(); } catch (e) {}
+        resetAndGoHome();
+      }, 10000);
+
+      state.hostConn.on('open', () => {
+        connOpened = true;
+        clearTimeout(connTimeout);
+        state.hostConn.send({ type: 'join', name: getName() });
+        // loading 会在 applyState 里被隐藏
+      });
       state.hostConn.on('data', data => handleHostMessage(data));
-      state.hostConn.on('close', () => { toast('与房主断开连接'); resetAndGoHome(); });
-      state.hostConn.on('error', () => { toast('连接失败'); resetAndGoHome(); });
+      state.hostConn.on('close', () => { hideLoading(); toast('与房主断开连接'); resetAndGoHome(); });
+      state.hostConn.on('error', () => {
+        clearTimeout(connTimeout);
+        hideLoading();
+        toast('连接房间失败');
+        resetAndGoHome();
+      });
     });
-    state.peer.on('error', err => { toast('连接失败：' + err.type); resetAndGoHome(); });
+
+    peer.on('error', err => {
+      if (opened) return;
+      clearTimeout(timeout);
+      hideLoading();
+      toast('连接失败：' + (err.type || err.message || '未知错误'));
+      resetAndGoHome();
+    });
   }
 
   function resetAndGoHome() {
@@ -671,6 +909,8 @@
     state.myPlayerId = '';
     state.S = null;
     state.currentRoomId = '';
+    state.usedServer = 'peerjs';
+    hideLoading();
     $('rulesBtn').classList.remove('show');
     $('chatToggleBtn').classList.remove('show');
     $('chatPanel').classList.remove('open');
@@ -735,9 +975,10 @@
   }
 
   /* =========================================================
-     8. UI 渲染
+     9. UI 渲染
      ========================================================= */
   function applyState(newState) {
+    hideLoading();  // 收到房主第一条状态后隐藏 loading
     if (newState.id !== state.currentRoomId) {
       state.currentRoomId = newState.id;
       state.lastChatLen = -1;
@@ -789,6 +1030,8 @@
     const S = state.S;
     $('roomCode').textContent = S.id;
     const host = S.hostId === myId();
+    const serverLabel = SERVERS[S.serverId] ? SERVERS[S.serverId].label : '';
+    $('roomServerHint').textContent = serverLabel ? ('信令服务器：' + serverLabel) : '';
     const modeText = S.rules.mode === 'score' ? ' · 计分制' : (S.rules.mode === 'elimination' ? ' · 淘汰制' : ' · 单局制');
     $('playerList').innerHTML = S.players.map((p, i) => {
       let tag = i === 0 ? '房主' : '';
@@ -961,7 +1204,7 @@
   }
 
   /* =========================================================
-     9. 设置 / 房规
+     10. 设置 / 房规
      ========================================================= */
   let globalFontScale = parseFloat(localStorage.getItem('uno_font_scale') || '100') / 100;
   function applyFontScale() {
@@ -973,6 +1216,9 @@
 
   function initSettings() {
     applyFontScale();
+
+    const vercelHostInput = $('vercelHostInput');
+    vercelHostInput.value = localStorage.getItem('uno_vercel_host') || '';
 
     const volumeSlider = $('volumeSlider');
     const fontSlider = $('fontSlider');
@@ -996,6 +1242,13 @@
       localStorage.setItem('uno_font_scale', v);
       $('fontValue').textContent = v;
       applyFontScale();
+    });
+
+    vercelHostInput.addEventListener('change', function () {
+      const v = this.value.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+      this.value = v;
+      if (v) localStorage.setItem('uno_vercel_host', v);
+      else localStorage.removeItem('uno_vercel_host');
     });
 
     $('settingsBtn').addEventListener('click', () => { initAudio(); $('settingsPanel').classList.add('show'); });
@@ -1064,7 +1317,7 @@
   }
 
   /* =========================================================
-     10. 聊天交互
+     11. 聊天交互
      ========================================================= */
   function bindChatEvents() {
     $('chatToggleBtn').addEventListener('click', () => {
@@ -1089,7 +1342,7 @@
   }
 
   /* =========================================================
-     11. 主入口
+     12. 主入口
      ========================================================= */
   function init() {
     $('nameInput').value = localStorage.getItem('uno_name') || '';
@@ -1097,7 +1350,6 @@
     initSettings();
     bindChatEvents();
 
-    // 首页
     $('createBtn').addEventListener('click', () => { initAudio(); createRoom(); });
     $('joinBtn').addEventListener('click', () => {
       initAudio();
@@ -1108,7 +1360,6 @@
     $('roomInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('joinBtn').click(); });
     $('nameInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('createBtn').click(); });
 
-    // 房间
     $('startBtn').addEventListener('click', () => {
       if (state.isHost) {
         if (state.room && state.room.players.length >= 2) startGame();
@@ -1118,7 +1369,6 @@
       }
     });
 
-    // 退出
     $('exitBtn').addEventListener('click', () => {
       const msg = state.isHost ? '确定解散房间并退出吗？' : '确定离开房间吗？';
       if (!confirm(msg)) return;
@@ -1133,7 +1383,6 @@
       toast('已退出房间');
     });
 
-    // 结算
     $('overlayBtn').addEventListener('click', () => {
       const btn = $('overlayBtn');
       if (btn.disabled) return;
@@ -1165,7 +1414,6 @@
       }
     });
 
-    // 手牌
     $('myHand').addEventListener('click', e => {
       const el = e.target.closest ? e.target.closest('.card') : null;
       if (!el || !state.S || state.S.phase !== 'playing') return;
@@ -1183,7 +1431,6 @@
       }
     });
 
-    // 牌堆
     $('deck').addEventListener('click', () => {
       if (!state.S || state.S.phase !== 'playing') return;
       const me = myPlayer();
@@ -1194,7 +1441,6 @@
       else if (state.hostConn && state.hostConn.open) state.hostConn.send({ type: 'drawCard' });
     });
 
-    // 跳过 / 摸牌
     $('passBtn').addEventListener('click', () => {
       sfxClick();
       if (state.S && state.S.rules.stacking && state.S.pendingDraw > 0) {
@@ -1206,14 +1452,12 @@
       }
     });
 
-    // UNO
     $('unoBtn').addEventListener('click', () => {
       sfxPlay();
       if (state.isHost) handleCallUno(state.myPlayerId);
       else if (state.hostConn && state.hostConn.open) state.hostConn.send({ type: 'callUno' });
     });
 
-    // 抓 UNO
     $('opponents').addEventListener('click', e => {
       const btn = e.target.closest ? e.target.closest('.opp-uno-btn') : null;
       if (!btn) return;
@@ -1223,7 +1467,6 @@
       else if (state.hostConn && state.hostConn.open) state.hostConn.send({ type: 'catchUno', targetId });
     });
 
-    // 质疑
     $('challengeBtn').addEventListener('click', () => {
       $('challengeOverlay').classList.remove('show');
       sfxClick();
@@ -1237,7 +1480,6 @@
       else if (state.hostConn && state.hostConn.open) state.hostConn.send({ type: 'acceptDraw' });
     });
 
-    // 换牌
     $('swapList').addEventListener('click', e => {
       const btn = e.target.closest ? e.target.closest('button[data-swap]') : null;
       if (!btn) return;
@@ -1247,7 +1489,6 @@
       else if (state.hostConn && state.hostConn.open) state.hostConn.send({ type: 'swapTarget', targetId: btn.dataset.swap });
     });
 
-    // 选颜色
     document.querySelectorAll('#colorPicker .swatch').forEach(el => {
       el.addEventListener('click', () => {
         $('colorPicker').classList.remove('show');
@@ -1260,7 +1501,6 @@
       });
     });
 
-    // 离开页面提醒
     window.addEventListener('beforeunload', e => {
       if (state.room && state.room.phase !== 'waiting') {
         e.preventDefault();
