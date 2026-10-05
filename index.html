@@ -15,18 +15,18 @@
 <body>
 
 <div id="app">
-  <!-- 首页：昵称区 + 操作区分开 -->
   <section id="home" class="screen active">
     <button id="settingsBtn" title="设置">⚙</button>
     <h1>UNO</h1>
 
     <div class="name-block">
-      <div class="name-title">👤 你的昵称</div>
+      <div class="name-title">👤 你的昵称与头像</div>
       <input id="nameInput" placeholder="输入昵称（最多 8 字）" maxlength="8" autocomplete="off">
+      <div class="avatar-picker-inline" id="avatarPickerHome"></div>
     </div>
 
     <div class="action-block" id="actionBlock">
-      <div class="action-hint">✅ 昵称已就绪，开始游戏吧</div>
+      <div class="action-hint">✅ 昵称已就绪</div>
       <button id="createBtn" class="btn-primary">创建房间</button>
       <div class="divider">— 或 —</div>
       <div class="join-row">
@@ -36,7 +36,6 @@
     </div>
   </section>
 
-  <!-- 房间 -->
   <section id="room" class="screen">
     <div class="room-head">
       <div class="label">房 间 号</div>
@@ -47,20 +46,25 @@
       <button id="copyRoomBtn" class="btn-secondary">📋 复制房间号</button>
       <button id="reconnectBtn" class="btn-secondary" style="display:none">🔄 重连</button>
     </div>
-    <div class="room-warning">⚠️ 复制房间号发给朋友，<b>请勿切换到其他 App 太久</b></div>
+    <div class="room-warning">⚠️ 复制房间号发给朋友，请勿切换 App 太久</div>
     <ul id="playerList"></ul>
     <button id="startBtn" class="btn-primary">开始游戏</button>
     <div id="waitTip" class="hint" style="display:none">等待房主开始…</div>
   </section>
 
-  <!-- 游戏 -->
   <section id="game" class="screen">
     <div id="opponents"></div>
     <div id="status"></div>
     <div id="table">
-      <div id="deck" class="card back">UNO</div>
+      <div id="deckWrap" class="deck-wrap">
+        <div id="deck" class="card back">
+          <span class="deck-inner-label">UNO</span>
+        </div>
+        <div class="deck-hint" id="deckHint">👆 点我摸牌</div>
+      </div>
       <div id="discard" class="slot"></div>
     </div>
+    <div id="myScoreBadge" class="my-score-badge" style="display:none">积分：0</div>
     <button id="unoBtn">UNO!</button>
     <button id="passBtn">跳过回合</button>
     <div id="myHand"></div>
@@ -95,7 +99,6 @@
   </div>
 </div>
 
-<!-- 弹窗们 -->
 <div id="colorPicker" class="overlay">
   <div class="picker-box">
     <div class="picker-title">选择颜色</div>
@@ -111,6 +114,7 @@
 <div id="challengeOverlay" class="overlay">
   <div class="picker-box">
     <div class="picker-title" id="challengeText">下家对你打出 +4</div>
+    <div class="challenge-hint">猜猜对方是否违规？<br>质疑成功对方罚 4 张，质疑失败你罚 6 张</div>
     <div style="display:flex;gap:10px;width:100%">
       <button id="acceptDrawBtn" style="flex:1">摸4张</button>
       <button id="challengeBtn" style="flex:1;background:#e76f51">质疑</button>
@@ -136,6 +140,12 @@
 <div id="settingsPanel" class="overlay">
   <div class="settings-box">
     <div class="settings-title">设 置</div>
+
+    <div class="setting-item">
+      <div class="setting-label"><span>你的头像</span></div>
+      <div class="avatar-picker-inline" id="avatarPickerSettings"></div>
+    </div>
+
     <div class="setting-item">
       <div class="setting-label"><span>音量</span><span class="setting-value"><span id="volumeValue">100</span>%</span></div>
       <div class="slider-row">
@@ -144,6 +154,7 @@
         <span style="color:#9fc2b5">🔊</span>
       </div>
     </div>
+
     <div class="setting-item">
       <div class="setting-label"><span>字体大小</span><span class="setting-value"><span id="fontValue">100</span>%</span></div>
       <div class="slider-row">
@@ -152,11 +163,24 @@
         <span style="color:#9fc2b5;font-size:20px">A</span>
       </div>
     </div>
+
+    <div class="rule-row">
+      <div>
+        <div class="rule-label">显示游戏事件</div>
+        <div class="rule-desc">在聊天框显示摸牌、罚牌等</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="showSysToggle">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
     <div class="setting-item">
       <div class="setting-label"><span>Vercel 备用地址（可选）</span></div>
       <input type="text" id="vercelHostInput" placeholder="留空则使用内置地址"
              style="max-width:none;text-align:left;font-size:13px;padding:10px 12px">
     </div>
+
     <div class="setting-item">
       <div class="setting-label"><span>关于</span></div>
       <div class="about-text">
@@ -176,9 +200,21 @@
     <div class="setting-item">
       <div class="setting-label"><span>游戏模式</span></div>
       <div class="mode-group">
-        <label class="mode-option" data-mode="single"><input type="radio" name="gameMode" value="single"><span>单局制</span></label>
-        <label class="mode-option" data-mode="score"><input type="radio" name="gameMode" value="score"><span>累积 500 分</span></label>
-        <label class="mode-option" data-mode="elimination"><input type="radio" name="gameMode" value="elimination"><span>淘汰制 · 输家观战</span></label>
+        <label class="mode-option" data-mode="single">
+          <input type="radio" name="gameMode" value="single">
+          <span class="mode-check"></span>
+          <span>单局制</span>
+        </label>
+        <label class="mode-option" data-mode="score">
+          <input type="radio" name="gameMode" value="score">
+          <span class="mode-check"></span>
+          <span>累积 500 分</span>
+        </label>
+        <label class="mode-option" data-mode="elimination">
+          <input type="radio" name="gameMode" value="elimination">
+          <span class="mode-check"></span>
+          <span>淘汰制 · 输家观战</span>
+        </label>
       </div>
     </div>
     <div class="rule-row">
@@ -192,6 +228,10 @@
     <div class="rule-row">
       <div><div class="rule-label">7-0 规则</div><div class="rule-desc">7 换牌，0 传牌</div></div>
       <label class="toggle-switch"><input type="checkbox" id="ruleSevenZero"><span class="toggle-slider"></span></label>
+    </div>
+    <div class="rule-row">
+      <div><div class="rule-label">+4 质疑</div><div class="rule-desc">关闭后 +4 直接罚抽 4 张</div></div>
+      <label class="toggle-switch"><input type="checkbox" id="ruleChallenge"><span class="toggle-slider"></span></label>
     </div>
     <button id="rulesCloseBtn" class="btn-primary" style="max-width:none">保存</button>
   </div>
@@ -214,7 +254,11 @@
     </div>
     <div class="guide-section">
       <div class="guide-h">📢 UNO 保护期</div>
-      <div class="guide-p">剩 1 张牌时你有 <b>3 秒保护期</b>，期间对手不能抓你。保护期过后若没喊 UNO，对手可以抓你，你要罚摸 2 张。</div>
+      <div class="guide-p">剩 1 张牌时有 <b>1.5 秒保护期</b>，期间对手不能抓你。保护期过后没喊 UNO 就罚摸 2 张。</div>
+    </div>
+    <div class="guide-section">
+      <div class="guide-h">❓ 质疑 +4</div>
+      <div class="guide-p">每次有人打出 +4，下家可以选择<b>摸4张</b>或<b>质疑</b>。质疑成功对方罚 4 张，质疑失败自己罚 6 张。房主可在房规里关闭。</div>
     </div>
     <button id="guideCloseBtn" class="btn-primary" style="max-width:none">我知道了</button>
   </div>
