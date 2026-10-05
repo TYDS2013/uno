@@ -65,9 +65,12 @@
       <div id="discard" class="slot"></div>
     </div>
     <div id="myScoreBadge" class="my-score-badge" style="display:none">积分：0</div>
-    <button id="unoBtn">UNO!</button>
-    <button id="passBtn">跳过回合</button>
-    <div id="myHand"></div>
+    <div class="action-buttons-row">
+  <button id="catchUnoBtn" class="catch-uno-btn">抓 UNO</button>
+  <button id="unoBtn">UNO!</button>
+</div>
+<button id="passBtn">跳过回合</button>
+<div id="myHand"></div>
   </section>
 </div>
 
@@ -166,7 +169,7 @@
 
     <div class="rule-row">
       <div>
-        <div class="rule-label">显示游戏事件</div>
+        
         <div class="rule-desc">在聊天框显示摸牌、罚牌等</div>
       </div>
       <label class="toggle-switch">
@@ -240,30 +243,76 @@
 <div id="guidePanel" class="overlay">
   <div class="guide-box">
     <div class="settings-title">📖 玩法指南</div>
+
     <div class="guide-section">
       <div class="guide-h">🎯 游戏目标</div>
-      <div class="guide-p">率先打光手牌。计分模式累积 500 分获胜；淘汰模式其他人全部出局后获胜。</div>
+      <div class="guide-p">
+        率先打光自己的手牌。三种模式：<br>
+        • <b>单局制</b>：一局定胜负<br>
+        • <b>计分制</b>：每局赢家按输家手牌计分，累积 <b>500 分</b> 获胜<br>
+        • <b>淘汰制</b>：每局结束后手牌分最高的玩家出局进入观战，最后一人获胜
+      </div>
     </div>
+
     <div class="guide-section">
-      <div class="guide-h">🎴 牌面</div>
-      <div class="guide-p">数字牌、禁止 ⊘、反转 ⇄、+2、变色 ★、+4。</div>
+      <div class="guide-h">🎴 牌面说明</div>
+      <div class="guide-p">
+        • <b>数字牌</b>：红/黄/绿/蓝，0-9<br>
+        • <b>禁止 ⊘</b>：下家跳过<br>
+        • <b>反转 ⇄</b>：出牌方向颠倒<br>
+        • <b>+2</b>：下家摸 2 张并跳过<br>
+        • <b>变色 ★</b>：出牌后指定接下来继续的颜色<br>
+        • <b>+4</b>：指定颜色，下家摸 4 张并跳过；<br>
+        &nbsp;&nbsp;若房规开启质疑，下家可选择「质疑」<br>
+        &nbsp;&nbsp;质疑成功 → 出牌者罚摸 4 张<br>
+        &nbsp;&nbsp;质疑失败 → 质疑者罚摸 6 张
+      </div>
     </div>
+
     <div class="guide-section">
-      <div class="guide-h">⌨️ 快捷键（电脑）</div>
-      <div class="guide-p"><b>1-9</b> 出对应手牌 · <b>空格</b> 摸牌 · <b>回车</b> 跳过 · <b>U</b> 喊 UNO · <b>K</b> 抓 UNO</div>
+      <div class="guide-h">🕹 操作方式</div>
+      <div class="guide-p">
+        • <b>出牌</b>：轮到你时，可出的牌会浮起发光，点一下打出<br>
+        • <b>摸牌</b>：点击中间的<b>牌堆</b>摸一张；<br>
+        &nbsp;&nbsp;摸到能出的牌可以立即出，也可以点「跳过回合」<br>
+        • <b>选颜色</b>：出万能牌时弹出颜色选择<br>
+        • <b>UNO</b>：剩 1 张牌时点红色「UNO!」按钮（有 2 秒保护期）<br>
+        • <b>抓 UNO</b>：对手剩 1 张牌但忘了喊 UNO，点「抓 UNO」按钮，对方罚摸 2 张
+      </div>
     </div>
+
     <div class="guide-section">
-      <div class="guide-h">📢 UNO 保护期</div>
-      <div class="guide-p">剩 1 张牌时有 <b>1.5 秒保护期</b>，期间对手不能抓你。保护期过后没喊 UNO 就罚摸 2 张。</div>
+      <div class="guide-h">⌨️ 键盘快捷键（电脑端）</div>
+      <div class="guide-p">
+        • <b>数字 1-9</b>：出第 N 张手牌（牌面右上角有编号）<br>
+        • <b>空格</b>：摸一张牌<br>
+        • <b>回车</b>：跳过回合<br>
+        • <b>U</b>：喊 UNO<br>
+        • <b>K</b>：抓 UNO（需等保护期结束后才能生效）
+      </div>
     </div>
+
     <div class="guide-section">
-      <div class="guide-h">❓ 质疑 +4</div>
-      <div class="guide-p">每次有人打出 +4，下家可以选择<b>摸4张</b>或<b>质疑</b>。质疑成功对方罚 4 张，质疑失败自己罚 6 张。房主可在房规里关闭。</div>
+      <div class="guide-h">📢 UNO 保护期规则</div>
+      <div class="guide-p">
+        当你剩 1 张牌时，系统会给你 <b>2 秒保护期</b>，在此期间对手无法抓你。<br>
+        请尽快点「UNO!」按钮或按 <b>U</b> 键。保护期过后若还没喊 UNO，对手就能抓你，你要罚摸 2 张。
+      </div>
     </div>
+
+    <div class="guide-section">
+      <div class="guide-h">🏠 房规（房主可在房规里开关）</div>
+      <div class="guide-p">
+        • <b>+2 / +4 堆叠</b>：允许用同类牌回应，罚抽累加<br>
+        • <b>强制出牌</b>：摸到能出的牌必须打出，不能跳过<br>
+        • <b>7-0 规则</b>：打出 7 可与指定玩家交换手牌；打出 0 全员按方向传递手牌<br>
+        • <b>+4 质疑</b>：关闭后 +4 直接罚抽 4 张，不弹质疑窗
+      </div>
+    </div>
+
     <button id="guideCloseBtn" class="btn-primary" style="max-width:none">我知道了</button>
   </div>
 </div>
-
 <div id="toast"></div>
 <div id="loadingOverlay" class="loading-overlay">
   <div class="loading-spinner"></div>

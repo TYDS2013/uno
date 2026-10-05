@@ -612,3 +612,69 @@ button:disabled{opacity:.35;}
   color:#ffd166;display:block;margin-top:6px;
   font-size:calc(13px * var(--fs));font-weight:600;
 }
+
+/* ============= 抓 UNO 按钮 & 操作按钮行 ============= */
+.action-buttons-row{
+  display:flex;
+  align-self:center;
+  gap:10px;
+  align-items:center;
+  flex:0 0 auto;
+  margin:4px 0;
+}
+
+.catch-uno-btn{
+  display:none;
+  background:linear-gradient(135deg,#e6a800,#d98c00);
+  color:#fff;
+  font-weight:900;
+  font-size:calc(14px * var(--fs));
+  letter-spacing:1px;
+  border-radius:22px;
+  padding:9px 22px;
+  box-shadow:0 0 14px rgba(230,168,0,.5);
+  animation:pulse 1s infinite;
+  white-space:nowrap;
+}
+.catch-uno-btn.show{display:block;}
+
+/* 与 UNO 按钮并排时略小 */
+#unoBtn{
+  margin:0;
+  padding:10px 30px;
+  font-size:calc(16px * var(--fs));
+}
+
+/* ============= 质疑弹窗：脉冲发光 ============= */
+@keyframes challengePulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(230,57,70,.6);}
+  50%{box-shadow:0 0 0 12px rgba(230,57,70,0);}
+}
+#challengeOverlay .picker-box{
+  animation:challengePulse 1.4s infinite;
+  border:2px solid rgba(230,57,70,.5);
+}
+#challengeOverlay.show .picker-title{
+  font-size:calc(22px * var(--fs));
+}
+.challenge-hint{
+  font-size:calc(13px * var(--fs));
+  color:#ffd166;
+  text-align:center;
+  line-height:1.7;
+  margin-bottom:8px;
+  background:rgba(255,209,102,.08);
+  border-radius:8px;
+  padding:8px 12px;
+  border:1px solid rgba(255,209,102,.2);
+}
+
+/* chatPopup 用更醒目的样式 */
+.chat-popup{
+  border-width:2px;
+}
+.chat-popup.judge{
+  border-color:#e63946;
+  background:linear-gradient(135deg,#2a1b1e,#1c332a);
+  box-shadow:0 8px 28px rgba(230,57,70,.4);
+}

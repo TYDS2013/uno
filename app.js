@@ -4,7 +4,7 @@
   /* ⚠️【需要手动修改】Vercel 备用服务器地址 */
   const DEFAULT_VERCEL_HOST = 'uno-peerjs.vercel.app';  // 👈 改成你的域名
 
-  const UNO_GRACE_MS = 1500;  // UNO 保护期 1.5 秒
+  const UNO_GRACE_MS = 2000;  // UNO 保护期 2 秒
 
   /* ============ 1. 通用工具 ============ */
   function $(id) { return document.getElementById(id); }
@@ -115,7 +115,7 @@
     hostConn: null, clientConns: {}, room: null, S: null, currentRoomId: '',
     pendingWild: null, unreadCount: 0, lastChatLen: -1, chatInitialized: false,
     usedServer: 'peerjs', lastDiscardId: null, hiddenAt: null, reconnecting: false,
-    showSysMessages: localStorage.getItem('uno_show_sys') === '1'
+    showSysMessages: false   // 已废弃（聊天固定只显示玩家消息 + 裁决）
   };
 
   /* ============ 4. 音效 ============ */
@@ -246,8 +246,23 @@
     const targetId = alive[ti].id;
     return room.players.findIndex(p => p.id === targetId);
   }
+  // 找出可抓 UNO 的对手（有 150ms 时钟容限）
+  function findCatchableUnoPlayer(S) {
+    if (!S || S.phase !== 'playing') return null;
+    const now = Date.now();
+    return S.players.find(p => {
+      if (p.isYou) return false;
+      if (p.alive === false) return false;
+      if (p.cardCount !== 1) return false;
+      if (p.unoCalled) return false;
+      if (p.unoGraceUntil && p.unoGraceUntil + 150 > now) return false;
+      return true;
+    }) || null;
+  }
 
   /* ============ 7. 游戏核心 ============ */
+  // level 1 = 裁决类消息（显示在聊天框里）
+  // level 2 = 一般游戏事件（不显示）
   function pushSystemMessage(text, level) {
     const room = state.room;
     if (!room) return;
@@ -311,7 +326,7 @@
     room.message = '游戏开始！';
     room.typingNow = {};
     room.chatMessages = [];
-    pushSystemMessage('游戏开始，' + room.players[firstIdx].name + ' 先出牌', 1);
+    // 不显示"游戏开始"在聊天里
     broadcastState();
   }
 
@@ -438,7 +453,7 @@
     room.drawnCardId = null;
     room.currentColor = card.color === 'wild' ? (color || 'red') : card.color;
 
-    // UNO 保护期：剩 1 张牌且没喊 UNO
+    // UNO 保护期
     if (player.hand.length === 1 && !player.unoCalled) {
       player.unoGraceUntil = Date.now() + UNO_GRACE_MS;
     } else {
@@ -462,15 +477,14 @@
           room.players[i].hand = hands[from];
         }
         room.message = player.name + ' 打出 0，所有玩家交换手牌';
+        pushSystemMessage('🔄 ' + player.name + ' 打出 0，全员交换手牌', 1);
       }
     }
 
     if (room.rules.stacking && (card.type === 'draw2' || card.type === 'wild4')) {
       room.pendingDraw = (room.pendingDraw || 0) + (card.type === 'draw2' ? 2 : 4);
       room.pendingType = card.type === 'draw2' ? '+2' : '+4';
-      const tag = card.type === 'draw2' ? '+2' : '+4';
-      room.message = player.name + ' 打出 ' + tag + '，累计 ' + room.pendingDraw + ' 张';
-      pushSystemMessage('⚡ ' + player.name + ' 打出 ' + tag + '，累计 ' + room.pendingDraw + ' 张', 1);
+      room.message = player.name + ' 打出 ' + room.pendingType + '，累计 ' + room.pendingDraw + ' 张';
       if (checkWin(player)) return;
       nextTurn(1);
       broadcastState();
@@ -481,37 +495,32 @@
       skipNext = true;
       const victim = room.players[nextAliveIdx(1)];
       room.message = player.name + ' 出禁止，' + victim.name + ' 跳过';
-      pushSystemMessage('🚫 ' + player.name + ' 对 ' + victim.name + ' 打出禁止', 1);
     }
     else if (card.type === 'reverse') {
       room.direction *= -1;
       room.message = player.name + ' 出反转，方向颠倒';
-      pushSystemMessage('⇄ ' + player.name + ' 打出反转', 1);
     }
     else if (card.type === 'draw2') {
       const ni = nextAliveIdx(1);
       const v = room.players[ni];
       drawCards(v, 2); skipNext = true;
       room.message = player.name + ' 对 ' + v.name + ' 打出 +2，' + v.name + ' 摸 2 张';
-      pushSystemMessage('➕ ' + player.name + ' 对 ' + v.name + ' 打出 +2，' + v.name + ' 摸 2 张', 1);
+      pushSystemMessage('➕ ' + player.name + ' 对 ' + v.name + ' 打出 +2，' + v.name + ' 罚摸 2 张', 1);
     }
     else if (card.type === 'wild4') {
       const ni4 = nextAliveIdx(1);
       const v4 = room.players[ni4];
       const offenderHadColor = hasColor(player, room.topCard.color);
       if (room.rules.challenge === false) {
-        // 质疑关闭：直接罚 4 张
         drawCards(v4, 4); skipNext = true;
         room.message = player.name + ' 对 ' + v4.name + ' 打出 +4，' + v4.name + ' 摸 4 张';
-        pushSystemMessage('➕ ' + player.name + ' 对 ' + v4.name + ' 打出 +4，' + v4.name + ' 摸 4 张', 1);
+        pushSystemMessage('➕ ' + player.name + ' 对 ' + v4.name + ' 打出 +4，' + v4.name + ' 罚摸 4 张', 1);
       } else {
-        // 质疑开启：弹出质疑窗口
         room.pendingChallenge = {
           victimId: v4.id, offenderId: peerId, color: card.color,
           offenderHadColor: offenderHadColor
         };
         room.message = player.name + ' 对 ' + v4.name + ' 打出 +4，等待选择…';
-        pushSystemMessage('❓ ' + player.name + ' 对 ' + v4.name + ' 打出 +4，等待选择质疑…', 1);
         if (checkWin(player)) return;
         nextTurn(1);
         broadcastState();
@@ -538,7 +547,6 @@
     if (room.rules.stacking && room.pendingDraw > 0) {
       drawCards(player, room.pendingDraw);
       room.message = player.name + ' 摸了 ' + room.pendingDraw + ' 张牌';
-      pushSystemMessage('🃏 ' + player.name + ' 摸了 ' + room.pendingDraw + ' 张牌', 1);
       room.pendingDraw = 0;
       room.pendingType = null;
       nextTurn(1);
@@ -570,11 +578,9 @@
 
     if (!playable) {
       room.message = '摸到一张牌，无法出牌，自动跳过';
-      pushSystemMessage('🃏 ' + player.name + ' 摸了一张牌，跳过', 2);
       nextTurn(1);
     } else {
       room.message = room.rules.forcePlay ? '摸到一张牌，必须打出' : '摸到一张牌，可出牌或跳过';
-      pushSystemMessage('🃏 ' + player.name + ' 摸了一张牌', 2);
     }
     broadcastState();
   }
@@ -600,7 +606,6 @@
     player.unoCalled = true;
     player.unoGraceUntil = 0;
     room.message = player.name + ' 喊了 UNO！';
-    pushSystemMessage('📢 ' + player.name + ' 喊了 UNO！', 1);
     broadcastState();
   }
 
@@ -616,15 +621,19 @@
       broadcastState();
       return;
     }
-    if (target.unoGraceUntil && Date.now() < target.unoGraceUntil) {
-      room.message = target.name + ' 还在保护期内，不能抓！';
+    // 严格保护期检查（含时钟容差）
+    if (target.unoGraceUntil && target.unoGraceUntil + 150 > Date.now()) {
+      const left = ((target.unoGraceUntil - Date.now()) / 1000).toFixed(1);
+      const leftTxt = Math.max(0, parseFloat(left)).toFixed(1);
+      room.message = target.name + ' 还在保护期内（剩 ' + leftTxt + 's），不能抓！';
+      pushSystemMessage('⚠ ' + catcher.name + ' 试图抓 ' + target.name + '，但保护期未过', 1);
       broadcastState();
       return;
     }
     drawCards(target, 2);
     target.unoCalled = false;
     room.message = target.name + ' 忘记喊 UNO，被 ' + catcher.name + ' 抓到，摸 2 张牌！';
-    pushSystemMessage('⚠ ' + target.name + ' 被 ' + catcher.name + ' 抓到，罚摸 2 张', 1);
+    pushSystemMessage('⚠ ' + target.name + ' 忘记喊 UNO，被 ' + catcher.name + ' 抓到，罚摸 2 张', 1);
     broadcastState();
   }
 
@@ -975,7 +984,7 @@
         room.winnerId = null;
       }
     }
-    if (wasName) pushSystemMessage(wasName + ' 离开了房间', 2);
+    if (wasName) pushSystemMessage(wasName + ' 离开了房间', 1);
     broadcastState();
   }
 
@@ -983,8 +992,8 @@
     const room = state.room;
     if (!room || room.phase === 'ended') return;
     if (data.type === 'join') {
-      // ✅ 修复重复玩家：如果同名且旧连接已断开，视为重连
       const name = (data.name || '玩家').slice(0, 8);
+      // 检查是否有同名玩家且旧连接已断开 → 视为重连
       const existingIdx = room.players.findIndex(p => {
         if (p.name !== name) return false;
         if (p.id === conn.peer) return false;
@@ -997,7 +1006,7 @@
         old.id = conn.peer;
         old.avatar = data.avatar || old.avatar || '😀';
         state.clientConns[conn.peer] = conn;
-        pushSystemMessage(name + ' 重新连接了房间', 2);
+        pushSystemMessage(name + ' 重新连接了房间', 1);
         broadcastState();
         return;
       }
@@ -1009,7 +1018,7 @@
         avatar: data.avatar || '😀'
       });
       state.clientConns[conn.peer] = conn;
-      pushSystemMessage(name + ' 加入了房间', 2);
+      pushSystemMessage(name + ' 加入了房间', 1);
       broadcastState();
     } else if (data.type === 'start') {
       if (conn.peer !== room.hostId) return;
@@ -1331,16 +1340,18 @@
     if (!me) return;
     const isSpectator = me.alive === false;
 
+    // === 对手区 ===
+    let hasCatchable = false;
+    const now0 = Date.now();
     const others = S.players.filter(p => !p.isYou);
     $('opponents').innerHTML = others.length ? others.map(p => {
-      let unoBtn = '';
+      let graceHtml = '';
       if (p.cardCount === 1 && !p.unoCalled && p.alive !== false) {
-        const graceLeft = (p.unoGraceUntil || 0) - Date.now();
-        if (graceLeft <= 0) {
-          unoBtn = '<button class="opp-uno-btn" data-catch="' + p.id + '">抓 UNO</button>';
+        const graceLeft = (p.unoGraceUntil || 0) - now0;
+        if (graceLeft > 0) {
+          graceHtml = '<div class="opp-grace">⏱ ' + (graceLeft / 1000).toFixed(1) + 's</div>';
         } else {
-          const sec = (graceLeft / 1000).toFixed(1);
-          unoBtn = '<div class="opp-grace">⏱ ' + sec + 's</div>';
+          hasCatchable = true;
         }
       }
       const scoreHtml = (S.rules.mode === 'score') ? '<div class="opp-score">' + (p.score || 0) + ' 分</div>' : '';
@@ -1348,11 +1359,11 @@
       return '<div class="opp ' + (S.turnId === p.id ? 'active' : '') + (p.alive === false ? ' spectator' : '') + '">' +
         '<div class="opp-avatar">' + esc(p.avatar || '😀') + '</div>' +
         '<div class="opp-name">' + esc(p.name) + '</div>' +
-        unoBtn + scoreHtml + specHtml +
+        graceHtml + scoreHtml + specHtml +
         '</div>';
     }).join('') : '<div class="opp"><div class="opp-name">等待中…</div></div>';
 
-    // 弃牌堆
+    // === 弃牌堆 ===
     const top = S.topCard;
     const newTopId = top ? top.id : null;
     const topChanged = newTopId !== state.lastDiscardId;
@@ -1367,6 +1378,7 @@
 
     const isMyTurn = S.turnId === me.id && S.phase === 'playing' && !isSpectator;
 
+    // === 状态文字 ===
     if (S.phase === 'ended') $('status').textContent = S.winnerName + ' 获胜 🎉';
     else if (S.phase === 'roundEnd') $('status').textContent = S.message || (S.winnerName + ' 赢得本局');
     else if (isSpectator) $('status').textContent = '👁 观战中 — ' + (S.message || (nameOf(S.turnId) + ' 出牌中…'));
@@ -1377,6 +1389,7 @@
       $('status').textContent = S.message || ('等待 ' + nameOf(S.turnId) + ' 出牌…');
     }
 
+    // === 积分 ===
     if (S.rules.mode === 'score' && !isSpectator) {
       $('myScoreBadge').textContent = '我的积分：' + (me.score || 0);
       $('myScoreBadge').style.display = 'block';
@@ -1384,12 +1397,12 @@
       $('myScoreBadge').style.display = 'none';
     }
 
-    // 牌堆提示
+    // === 牌堆提示 ===
     const canDraw = isMyTurn && S.drawnCardId === null &&
       !(S.rules.stacking && S.pendingDraw > 0 && S.drawnCardId !== null);
     $('deckWrap').classList.toggle('can-draw', canDraw);
 
-    // 跳过按钮
+    // === 跳过按钮 ===
     const passBtn = $('passBtn');
     if (isSpectator) passBtn.classList.remove('show');
     else if (S.rules.stacking && S.pendingDraw > 0 && isMyTurn) {
@@ -1400,17 +1413,21 @@
       passBtn.textContent = '跳过回合';
     } else passBtn.classList.remove('show');
 
-    // UNO 按钮
+    // === UNO 按钮 ===
     const unoBtnEl = $('unoBtn');
     const needUno = !isSpectator && me.hand && me.hand.length === 1 &&
       !me.unoCalled && S.phase === 'playing';
     unoBtnEl.classList.toggle('show', !!needUno);
 
-    // 手牌区高亮：轮到自己
+    // === 抓 UNO 按钮：只要有可抓的对手就显示 ===
+    const catchBtn = $('catchUnoBtn');
+    catchBtn.classList.toggle('show', hasCatchable && !isSpectator && S.phase === 'playing');
+
+    // === 手牌区高亮 ===
     const myHandEl = $('myHand');
     myHandEl.classList.toggle('my-turn', isMyTurn);
 
-    // 手牌
+    // === 手牌 ===
     if (isSpectator) {
       $('myHand').innerHTML = '<div class="spectator-tip">👁 观战中 · 等待下一局</div>';
     } else if (me.hand) {
@@ -1427,6 +1444,7 @@
       }).join('');
     } else $('myHand').innerHTML = '';
 
+    // === 结算 ===
     if (S.phase === 'ended') {
       const win = S.winnerId === myId();
       const host = S.hostId === myId();
@@ -1471,7 +1489,7 @@
     if (S.phase === 'playing') scheduleUnoRefresh();
   }
 
-  // 倒计时刷新：100ms 一次，保证时间准确
+  // 倒计时刷新：100ms 一次
   let unoRefreshTimer = null;
   function scheduleUnoRefresh() {
     if (unoRefreshTimer) clearTimeout(unoRefreshTimer);
@@ -1502,10 +1520,10 @@
     } else badge.classList.remove('show');
   }
 
+  // 聊天过滤：只显示玩家发言 + 游戏裁决（level 1）
   function shouldShowMessage(m) {
     if (m.sender !== 'system') return true;
-    if (m.level === 1) return true;
-    return state.showSysMessages;
+    return m.level === 1;
   }
 
   function renderMsgHtml(m) {
@@ -1533,7 +1551,14 @@
     if (msgs.length > state.lastChatLen) {
       const newOnes = msgs.slice(state.lastChatLen);
       newOnes.forEach(m => {
-        if (m.sender !== 'system' && m.sender !== state.myPlayerId) showChatPopup(m);
+        // 玩家消息 → 普通弹窗
+        if (m.sender !== 'system' && m.sender !== state.myPlayerId) {
+          showChatPopup(m, { judge: false });
+        }
+        // 系统裁决（level 1）→ 长显示 + 特殊样式
+        else if (m.sender === 'system' && m.level === 1) {
+          showChatPopup({ senderName: '⚖️ 裁决', text: m.text }, { judge: true });
+        }
       });
       if ($('chatPanel').classList.contains('open')) {
         setTimeout(() => { el.scrollTop = el.scrollHeight; }, 0);
@@ -1547,14 +1572,20 @@
   }
 
   let chatPopupTimer = null;
-  function showChatPopup(m) {
+  function showChatPopup(m, opts) {
+    opts = opts || {};
     const popup = $('chatPopup');
     $('chatPopupAvatar').textContent = m.senderName ? m.senderName[0] : '?';
     $('chatPopupName').textContent = m.senderName;
     $('chatPopupText').textContent = m.text;
     popup.classList.add('show');
+    if (opts.judge) popup.classList.add('judge');
+    else popup.classList.remove('judge');
     clearTimeout(chatPopupTimer);
-    chatPopupTimer = setTimeout(() => popup.classList.remove('show'), 3000);
+    chatPopupTimer = setTimeout(() => {
+      popup.classList.remove('show');
+      popup.classList.remove('judge');
+    }, opts.judge ? 6000 : 3500);
   }
 
   function renderTypingIndicator() {
@@ -1619,7 +1650,6 @@
         localStorage.setItem('uno_avatar', emoji);
         sfxClick();
         renderAvatarPickers();
-        // 通知房间
         if (state.S && state.S.phase && !state.isHost && state.hostConn && state.hostConn.open) {
           state.hostConn.send({ type: 'updateAvatar', avatar: emoji });
         } else if (state.isHost && state.room) {
@@ -1661,14 +1691,12 @@
       applyFontScale();
     });
 
-    const sysToggle = $('showSysToggle');
-    sysToggle.checked = state.showSysMessages;
-    sysToggle.addEventListener('change', function () {
-      state.showSysMessages = this.checked;
-      localStorage.setItem('uno_show_sys', this.checked ? '1' : '0');
-      state.lastChatLen = -1;
-      renderChat();
-    });
+    // 隐藏已废弃的"显示游戏事件"开关
+    const sysToggleEl = $('showSysToggle');
+    if (sysToggleEl) {
+      const row = sysToggleEl.closest('.rule-row');
+      if (row) row.style.display = 'none';
+    }
 
     vercelHostInput.addEventListener('change', function () {
       const v = this.value.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '');
@@ -1741,8 +1769,7 @@
         room.eliminatedId = null; room.eliminatedName = null;
         room.pendingDraw = 0; room.pendingType = null;
         room.pendingChallenge = null; room.pendingSwap = null;
-        const modeLabels = { single: '单局制', score: '累积500分', elimination: '淘汰制' };
-        pushSystemMessage('模式已切换为：' + modeLabels[newMode], 2);
+        // 模式切换不显示在聊天里
       }
       $('rulesPanel').classList.remove('show');
       broadcastState();
@@ -1803,6 +1830,7 @@
       const me = myPlayer();
       if (!me || me.alive === false) return;
 
+      // 1-9：出牌
       if (e.key >= '1' && e.key <= '9') {
         const idx = parseInt(e.key) - 1;
         if (me.hand && me.hand[idx]) {
@@ -1822,6 +1850,8 @@
         e.preventDefault();
         return;
       }
+
+      // 空格：摸牌
       if (e.key === ' ' || e.code === 'Space') {
         if (S.turnId === me.id && S.drawnCardId === null) {
           sfxDraw();
@@ -1832,6 +1862,8 @@
         e.preventDefault();
         return;
       }
+
+      // 回车：跳过
       if (e.key === 'Enter') {
         if (S.turnId === me.id && S.drawnCardId !== null && !S.rules.forcePlay) {
           if (state.isHost) handlePass(state.myPlayerId);
@@ -1841,6 +1873,8 @@
         e.preventDefault();
         return;
       }
+
+      // U：喊 UNO
       if (e.key === 'u' || e.key === 'U') {
         if (me.hand && me.hand.length === 1 && !me.unoCalled) {
           sfxPlay();
@@ -1851,16 +1885,17 @@
         e.preventDefault();
         return;
       }
+
+      // K：抓 UNO（含 150ms 时钟容差）
       if (e.key === 'k' || e.key === 'K') {
-        const now = Date.now();
-        const target = S.players.find(p =>
-          !p.isYou && p.alive !== false && p.cardCount === 1 && !p.unoCalled &&
-          (!p.unoGraceUntil || now >= p.unoGraceUntil));
+        const target = findCatchableUnoPlayer(S);
         if (target) {
           sfxClick();
           if (state.isHost) handleCatchUno(state.myPlayerId, target.id);
           else if (state.hostConn && state.hostConn.open)
             state.hostConn.send({ type: 'catchUno', targetId: target.id });
+        } else {
+          toast('现在还不能抓 UNO（保护期内或无人可抓）');
         }
         e.preventDefault();
       }
@@ -2026,13 +2061,15 @@
       else if (state.hostConn && state.hostConn.open) state.hostConn.send({ type: 'callUno' });
     });
 
-    $('opponents').addEventListener('click', e => {
-      const btn = e.target.closest ? e.target.closest('.opp-uno-btn') : null;
-      if (!btn) return;
-      const targetId = btn.dataset.catch;
+    // 抓 UNO 按钮（底部）
+    $('catchUnoBtn').addEventListener('click', () => {
+      const S = state.S;
+      if (!S || S.phase !== 'playing') return;
+      const target = findCatchableUnoPlayer(S);
+      if (!target) { toast('没有可以抓的对手'); return; }
       sfxClick();
-      if (state.isHost) handleCatchUno(state.myPlayerId, targetId);
-      else if (state.hostConn && state.hostConn.open) state.hostConn.send({ type: 'catchUno', targetId });
+      if (state.isHost) handleCatchUno(state.myPlayerId, target.id);
+      else if (state.hostConn && state.hostConn.open) state.hostConn.send({ type: 'catchUno', targetId: target.id });
     });
 
     $('challengeBtn').addEventListener('click', () => {
