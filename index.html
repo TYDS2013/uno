@@ -5,16 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<!-- Favicon：浏览器标签页图标（彩色 UNO 卡片） -->
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231c332a'/%3E%3Crect x='12' y='9' width='40' height='46' rx='6' fill='%23e63946' stroke='%23ffffff' stroke-width='2.5'/%3E%3Ctext x='32' y='39' text-anchor='middle' font-family='Arial Black, sans-serif' font-size='18' font-weight='900' fill='%23ffffff' font-style='italic'%3EUNO%3C/text%3E%3C/svg%3E">
-
-<!-- iOS 添加到主屏幕时使用的图标 -->
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='38' fill='%231c332a'/%3E%3Crect x='34' y='24' width='112' height='132' rx='16' fill='%23e63946' stroke='%23ffffff' stroke-width='7'/%3E%3Ctext x='90' y='110' text-anchor='middle' font-family='Arial Black, sans-serif' font-size='52' font-weight='900' fill='%23ffffff' font-style='italic'%3EUNO%3C/text%3E%3C/svg%3E">
-
-<!-- 手机浏览器地址栏颜色（与你游戏背景色一致） -->
-<meta name="theme-color" content="#1b3a2c">
 <meta name="apple-mobile-web-app-title" content="UNO">
 <meta name="application-name" content="UNO">
+<meta name="theme-color" content="#1b3a2c">
+
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231c332a'/%3E%3Crect x='12' y='9' width='40' height='46' rx='6' fill='%23e63946' stroke='%23ffffff' stroke-width='2.5'/%3E%3Ctext x='32' y='39' text-anchor='middle' font-family='Arial Black, sans-serif' font-size='18' font-weight='900' fill='%23ffffff' font-style='italic'%3EUNO%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='38' fill='%231c332a'/%3E%3Crect x='34' y='24' width='112' height='132' rx='16' fill='%23e63946' stroke='%23ffffff' stroke-width='7'/%3E%3Ctext x='90' y='110' text-anchor='middle' font-family='Arial Black, sans-serif' font-size='52' font-weight='900' fill='%23ffffff' font-style='italic'%3EUNO%3C/text%3E%3C/svg%3E">
+
 <title>UNO</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -22,18 +19,27 @@
 <body>
 
 <div id="app">
+  <!-- 首页 -->
   <section id="home" class="screen active">
     <button id="settingsBtn" title="设置">⚙</button>
     <h1>UNO</h1>
-    <input id="nameInput" placeholder="输入昵称" maxlength="8" autocomplete="off">
-    <button id="createBtn" class="btn-primary">创建房间</button>
-    <div class="divider">— 或 —</div>
-    <div class="join-row">
-      <input id="roomInput" placeholder="房间号（如 P1234）" maxlength="8" autocomplete="off">
-      <button id="joinBtn">加入</button>
+
+    <div class="name-section">
+      <label class="name-label">你的昵称</label>
+      <input id="nameInput" placeholder="输入昵称（最多 8 字）" maxlength="8" autocomplete="off">
+    </div>
+
+    <div class="action-section" id="actionSection">
+      <button id="createBtn" class="btn-primary">创建房间</button>
+      <div class="divider">— 或 —</div>
+      <div class="join-row">
+        <input id="roomInput" placeholder="房间号" maxlength="8" autocomplete="off">
+        <button id="joinBtn">加入</button>
+      </div>
     </div>
   </section>
 
+  <!-- 房间 -->
   <section id="room" class="screen">
     <div class="room-head">
       <div class="label">房 间 号</div>
@@ -45,6 +51,7 @@
     <div id="waitTip" class="hint" style="display:none">等待房主开始…</div>
   </section>
 
+  <!-- 游戏 -->
   <section id="game" class="screen">
     <div id="opponents"></div>
     <div id="status"></div>
@@ -63,9 +70,15 @@
   <button id="rulesBtn" class="top-btn" title="房规设置">📋</button>
 </div>
 
+<button id="guideBtn" class="top-btn" title="玩法指南">❓</button>
 <button id="chatToggleBtn" title="聊天">💬<span id="chatBadge" class="chat-badge">0</span></button>
+
 <div id="chatPanel">
-  <div class="chat-header"><span>聊 天</span><button id="chatCloseBtn">×</button></div>
+  <div class="chat-header">
+    <span>聊 天</span>
+    <span id="typingIndicator" class="typing-indicator"></span>
+    <button id="chatCloseBtn">×</button>
+  </div>
   <div id="chatMessages" class="chat-messages"><div class="chat-empty">暂无消息</div></div>
   <div class="chat-input-row">
     <input id="chatInput" placeholder="输入消息…" maxlength="100" autocomplete="off">
@@ -73,6 +86,16 @@
   </div>
 </div>
 
+<!-- 游戏内新消息弹窗 -->
+<div id="chatPopup" class="chat-popup">
+  <div class="chat-popup-avatar" id="chatPopupAvatar">?</div>
+  <div class="chat-popup-content">
+    <div class="chat-popup-name" id="chatPopupName"></div>
+    <div class="chat-popup-text" id="chatPopupText"></div>
+  </div>
+</div>
+
+<!-- 选色 -->
 <div id="colorPicker" class="overlay">
   <div class="picker-box">
     <div class="picker-title">选择颜色</div>
@@ -85,6 +108,7 @@
   </div>
 </div>
 
+<!-- 质疑 +4 -->
 <div id="challengeOverlay" class="overlay">
   <div class="picker-box">
     <div class="picker-title" id="challengeText">下家对你打出 +4</div>
@@ -95,6 +119,7 @@
   </div>
 </div>
 
+<!-- 换牌 -->
 <div id="swapOverlay" class="overlay">
   <div class="picker-box">
     <div class="picker-title">选择一名玩家交换手牌</div>
@@ -102,6 +127,7 @@
   </div>
 </div>
 
+<!-- 结算 -->
 <div id="overlay" class="overlay">
   <div class="picker-box">
     <div id="overlayTitle" class="picker-title"></div>
@@ -110,6 +136,7 @@
   </div>
 </div>
 
+<!-- 设置 -->
 <div id="settingsPanel" class="overlay">
   <div class="settings-box">
     <div class="settings-title">设 置</div>
@@ -125,7 +152,7 @@
       <div class="setting-label"><span>字体大小</span><span class="setting-value"><span id="fontValue">100</span>%</span></div>
       <div class="slider-row">
         <span style="color:#9fc2b5;font-size:12px">A</span>
-        <input type="range" id="fontSlider" min="80" max="150" value="100">
+        <input type="range" id="fontSlider" min="80" max="160" value="100">
         <span style="color:#9fc2b5;font-size:20px">A</span>
       </div>
     </div>
@@ -152,6 +179,7 @@
   </div>
 </div>
 
+<!-- 房规 -->
 <div id="rulesPanel" class="overlay">
   <div class="settings-box">
     <div class="settings-title">房 规</div>
@@ -203,6 +231,80 @@
       </label>
     </div>
     <button id="rulesCloseBtn" class="btn-primary" style="max-width:none;width:100%">保存</button>
+  </div>
+</div>
+
+<!-- 玩法指南 -->
+<div id="guidePanel" class="overlay">
+  <div class="guide-box">
+    <div class="settings-title">📖 玩法指南</div>
+
+    <div class="guide-section">
+      <div class="guide-h">🎯 游戏目标</div>
+      <div class="guide-p">率先打光手牌。计分模式下，累积 500 分获得最终胜利；淘汰模式下，其他人全部出局后你获胜。</div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-h">🎴 牌面构成</div>
+      <div class="guide-p">
+        • <b>数字牌</b>（红/黄/绿/蓝，0-9）<br>
+        • <b>禁止 ⊘</b>：下家跳过<br>
+        • <b>反转 ⇄</b>：出牌方向颠倒<br>
+        • <b>+2</b>：下家摸 2 张并跳过<br>
+        • <b>变色 ★</b>：指定接下来的颜色<br>
+        • <b>+4</b>：指定颜色，下家摸 4 张并跳过
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-h">🕹 操作说明</div>
+      <div class="guide-p">
+        • 轮到你时，可出的牌会<b>上浮发光</b>，点一下打出<br>
+        • 点<b>牌堆</b>摸一张牌<br>
+        • 摸牌后可以出牌，或点「跳过回合」<br>
+        • 万能牌需要先选颜色
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-h">⌨️ 键盘快捷键（电脑端）</div>
+      <div class="guide-p">
+        • <b>数字键 1-9</b>：出第 N 张手牌<br>
+        • <b>空格</b>：摸牌<br>
+        • <b>回车</b>：跳过回合<br>
+        • <b>U</b>：喊 UNO<br>
+        • <b>K</b>：抓对手 UNO
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-h">📢 UNO 规则</div>
+      <div class="guide-p">
+        当你打出倒数第二张牌、手中只剩 1 张时，必须<b>立即点 UNO 按钮</b>或按 U 键。<br>
+        有 <b>3 秒保护期</b>给你反应，保护期内对手无法抓你。<br>
+        保护期结束后若仍没喊 UNO，对手可以点「抓UNO」按钮或按 K 键，你要罚摸 2 张。
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-h">❓ 质疑 +4</div>
+      <div class="guide-p">
+        如果有人对你打出 +4，你可以选择<b>摸4张</b>或<b>质疑</b>。<br>
+        质疑成功：出牌者罚摸 4 张（他手上其实有当前颜色的牌）。<br>
+        质疑失败：你罚摸 6 张。
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-h">🏠 村规（房主可在房规中开启）</div>
+      <div class="guide-p">
+        • <b>堆叠</b>：+2 叠 +2，+4 叠 +4，罚抽累加<br>
+        • <b>强制出牌</b>：摸到能出的牌必须出<br>
+        • <b>7-0 规则</b>：出 7 换手牌，出 0 所有人顺传
+      </div>
+    </div>
+
+    <button id="guideCloseBtn" class="btn-primary" style="max-width:none;width:100%">我知道了</button>
   </div>
 </div>
 
