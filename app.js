@@ -47,6 +47,21 @@
   }
   function hideLoading() { $('loadingOverlay').classList.remove('show'); }
 
+  /* ============ 1.5 邀请链接 ============ */
+  function buildInviteLink(roomId) {
+    const base = location.origin + location.pathname;
+    return base + '?room=' + encodeURIComponent(roomId);
+  }
+  function getRoomIdFromURL() {
+    try {
+      const params = new URLSearchParams(location.search);
+      const rid = (params.get('room') || '').trim().toUpperCase();
+      if (!rid) return '';
+      if (/^[PV]\d{4}$/.test(rid)) return rid;
+      return '';
+    } catch (e) { return ''; }
+  }
+
   /* ============ 2. 服务器 ============ */
   const TURN_CONFIG = {
     iceServers: [
@@ -114,8 +129,7 @@
     peer: null, isHost: false, roomId: '', myPeerId: '', myPlayerId: '',
     hostConn: null, clientConns: {}, room: null, S: null, currentRoomId: '',
     pendingWild: null, unreadCount: 0, lastChatLen: -1, chatInitialized: false,
-    usedServer: 'peerjs', lastDiscardId: null, hiddenAt: null, reconnecting: false,
-    showSysMessages: false   // 已废弃（聊天固定只显示玩家消息 + 裁决）
+    usedServer: 'peerjs', lastDiscardId: null, hiddenAt: null, reconnecting: false
   };
 
   /* ============ 4. 音效 ============ */
@@ -246,7 +260,7 @@
     const targetId = alive[ti].id;
     return room.players.findIndex(p => p.id === targetId);
   }
-  // 找出可抓 UNO 的对手（有 150ms 时钟容限）
+  // 找出可抓 UNO 的对手（带 150ms 时钟容差）
   function findCatchableUnoPlayer(S) {
     if (!S || S.phase !== 'playing') return null;
     const now = Date.now();
@@ -326,7 +340,6 @@
     room.message = '游戏开始！';
     room.typingNow = {};
     room.chatMessages = [];
-    // 不显示"游戏开始"在聊天里
     broadcastState();
   }
 
@@ -462,6 +475,7 @@
 
     let skipNext = false;
 
+    // 7-0 规则
     if (room.rules.sevenZero && card.type === 'number' && (card.value === 7 || card.value === 0)) {
       if (card.value === 7) {
         room.pendingSwap = { from: peerId, value: 7 };
@@ -481,6 +495,7 @@
       }
     }
 
+    // 堆叠
     if (room.rules.stacking && (card.type === 'draw2' || card.type === 'wild4')) {
       room.pendingDraw = (room.pendingDraw || 0) + (card.type === 'draw2' ? 2 : 4);
       room.pendingType = card.type === 'draw2' ? '+2' : '+4';
@@ -491,6 +506,7 @@
       return;
     }
 
+    // 普通牌效果
     if (card.type === 'skip') {
       skipNext = true;
       const victim = room.players[nextAliveIdx(1)];
@@ -621,11 +637,10 @@
       broadcastState();
       return;
     }
-    // 严格保护期检查（含时钟容差）
+    // 严格保护期检查（含 150ms 时钟容差）
     if (target.unoGraceUntil && target.unoGraceUntil + 150 > Date.now()) {
-      const left = ((target.unoGraceUntil - Date.now()) / 1000).toFixed(1);
-      const leftTxt = Math.max(0, parseFloat(left)).toFixed(1);
-      room.message = target.name + ' 还在保护期内（剩 ' + leftTxt + 's），不能抓！';
+      const leftSec = Math.max(0, (target.unoGraceUntil - Date.now()) / 1000).toFixed(1);
+      room.message = target.name + ' 还在保护期内（剩 ' + leftSec + 's），不能抓！';
       pushSystemMessage('⚠ ' + catcher.name + ' 试图抓 ' + target.name + '，但保护期未过', 1);
       broadcastState();
       return;
@@ -817,6 +832,15 @@
       state.peer = peer;
       state.lastDiscardId = null;
 
+      // 保存房主状态，微信重载页面时可恢复
+      try {
+        sessionStorage.setItem('uno_host_room', JSON.stringify({
+          roomId: roomId,
+          serverId: serverId,
+          ts: Date.now()
+        }));
+      } catch (e) {}
+
       peer.on('connection', conn => {
         conn.on('open', () => {
           conn.on('data', data => handleClientMessage(conn, data));
@@ -949,6 +973,7 @@
     state.lastDiscardId = null;
     state.hiddenAt = null;
     state.reconnecting = false;
+    try { sessionStorage.removeItem('uno_host_room'); } catch (e) {}
     hideLoading();
     $('rulesBtn').classList.remove('show');
     $('chatToggleBtn').classList.remove('show');
@@ -993,7 +1018,7 @@
     if (!room || room.phase === 'ended') return;
     if (data.type === 'join') {
       const name = (data.name || '玩家').slice(0, 8);
-      // 检查是否有同名玩家且旧连接已断开 → 视为重连
+      // 检测同名玩家且旧连接已断开 → 视为重连
       const existingIdx = room.players.findIndex(p => {
         if (p.name !== name) return false;
         if (p.id === conn.peer) return false;
@@ -1042,16 +1067,17 @@
     else if (data.type === 'toast') toast(data.msg);
   }
 
-  /* ============ 8.5 断线重连 ============ */
-  async function copyRoomId() {
+  /* ============ 8.5 邀请链接 / 断线重连 ============ */
+  async function copyInviteLink() {
     const roomId = state.roomId;
     if (!roomId) return;
+    const link = buildInviteLink(roomId);
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(roomId);
+        await navigator.clipboard.writeText(link);
       } else {
         const ta = document.createElement('textarea');
-        ta.value = roomId;
+        ta.value = link;
         ta.style.position = 'fixed';
         ta.style.opacity = '0';
         ta.style.left = '-9999px';
@@ -1060,9 +1086,57 @@
         try { document.execCommand('copy'); } catch (e) {}
         document.body.removeChild(ta);
       }
-      toast('已复制房间号：' + roomId);
+      toast('已复制邀请链接：' + roomId);
       if (navigator.vibrate) navigator.vibrate(30);
-    } catch (e) { toast('复制失败，请长按手动复制'); }
+      const btn = $('copyRoomBtn');
+      if (btn) {
+        btn.classList.add('copied');
+        btn.textContent = '✅ 已复制';
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          btn.textContent = '📋 复制邀请链接';
+        }, 1500);
+      }
+    } catch (e) {
+      toast('复制失败，请长按房间号手动复制');
+    }
+  }
+
+  async function shareRoom() {
+    const roomId = state.roomId;
+    if (!roomId) return;
+    const link = buildInviteLink(roomId);
+    const text = '🎮 UNO 联机 - 房间号 ' + roomId + '\n点开直接加入：' + link;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'UNO 联机邀请',
+          text: '加入我的 UNO 房间：' + roomId,
+          url: link
+        });
+        return;
+      } catch (e) {
+        if (e.name === 'AbortError') return;
+      }
+    }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        toast('已复制邀请信息，可粘贴到微信');
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus(); ta.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(ta);
+        toast('已复制邀请信息');
+      }
+    } catch (e) {
+      toast('分享失败，请手动复制房间号');
+    }
   }
 
   function setupVisibilityHandling() {
@@ -1419,7 +1493,7 @@
       !me.unoCalled && S.phase === 'playing';
     unoBtnEl.classList.toggle('show', !!needUno);
 
-    // === 抓 UNO 按钮：只要有可抓的对手就显示 ===
+    // === 抓 UNO 按钮（底部） ===
     const catchBtn = $('catchUnoBtn');
     catchBtn.classList.toggle('show', hasCatchable && !isSpectator && S.phase === 'playing');
 
@@ -1489,7 +1563,7 @@
     if (S.phase === 'playing') scheduleUnoRefresh();
   }
 
-  // 倒计时刷新：100ms 一次
+  // 倒计时刷新：100ms
   let unoRefreshTimer = null;
   function scheduleUnoRefresh() {
     if (unoRefreshTimer) clearTimeout(unoRefreshTimer);
@@ -1551,12 +1625,9 @@
     if (msgs.length > state.lastChatLen) {
       const newOnes = msgs.slice(state.lastChatLen);
       newOnes.forEach(m => {
-        // 玩家消息 → 普通弹窗
         if (m.sender !== 'system' && m.sender !== state.myPlayerId) {
           showChatPopup(m, { judge: false });
-        }
-        // 系统裁决（level 1）→ 长显示 + 特殊样式
-        else if (m.sender === 'system' && m.level === 1) {
+        } else if (m.sender === 'system' && m.level === 1) {
           showChatPopup({ senderName: '⚖️ 裁决', text: m.text }, { judge: true });
         }
       });
@@ -1769,7 +1840,6 @@
         room.eliminatedId = null; room.eliminatedName = null;
         room.pendingDraw = 0; room.pendingType = null;
         room.pendingChallenge = null; room.pendingSwap = null;
-        // 模式切换不显示在聊天里
       }
       $('rulesPanel').classList.remove('show');
       broadcastState();
@@ -1886,7 +1956,7 @@
         return;
       }
 
-      // K：抓 UNO（含 150ms 时钟容差）
+      // K：抓 UNO（含 150ms 时钟容差，保护期内无效）
       if (e.key === 'k' || e.key === 'K') {
         const target = findCatchableUnoPlayer(S);
         if (target) {
@@ -1935,7 +2005,39 @@
   function init() {
     const savedName = localStorage.getItem('uno_name') || '';
     $('nameInput').value = savedName;
-    if (savedName.trim()) $('actionBlock').classList.add('show');
+
+    // 检测 URL 邀请参数
+    const urlRoom = getRoomIdFromURL();
+    if (urlRoom) {
+      $('inviteBanner').style.display = 'flex';
+      $('inviteRoomId').textContent = urlRoom;
+      $('roomInput').value = urlRoom;
+      if (savedName.trim()) {
+        $('actionBlock').classList.add('show');
+      }
+    } else if (savedName.trim()) {
+      $('actionBlock').classList.add('show');
+    }
+
+    // 检查上次是否是房主（微信强制重载场景）
+    try {
+      const saved = sessionStorage.getItem('uno_host_room');
+      if (saved && !urlRoom) {
+        const info = JSON.parse(saved);
+        if (info && info.roomId && Date.now() - info.ts < 5 * 60 * 1000) {
+          setTimeout(() => {
+            if (confirm('检测到上次房间 ' + info.roomId + '，是否恢复？')) {
+              state.roomId = info.roomId;
+              state.usedServer = info.serverId;
+              const digits = info.roomId.slice(1);
+              tryCreateOnServer(info.serverId, digits, null);
+            } else {
+              try { sessionStorage.removeItem('uno_host_room'); } catch (e) {}
+            }
+          }, 500);
+        }
+      }
+    } catch (e) {}
 
     $('nameInput').addEventListener('input', function () {
       $('actionBlock').classList.toggle('show', this.value.trim().length > 0);
@@ -1946,7 +2048,8 @@
     setupKeyboard();
     setupVisibilityHandling();
 
-    $('copyRoomBtn').addEventListener('click', () => { initAudio(); copyRoomId(); });
+    $('copyRoomBtn').addEventListener('click', () => { initAudio(); copyInviteLink(); });
+    $('shareBtn').addEventListener('click', () => { initAudio(); shareRoom(); });
     $('reconnectBtn').addEventListener('click', () => { initAudio(); manualReconnect(); });
 
     $('createBtn').addEventListener('click', () => { initAudio(); createRoom(); });
@@ -1956,6 +2059,20 @@
       if (!rid) return toast('请输入房间号');
       joinRoom(rid);
     });
+
+    // 邀请横幅上的"立即加入"
+    $('inviteJoinBtn').addEventListener('click', () => {
+      initAudio();
+      const rid = $('roomInput').value.trim() || $('inviteRoomId').textContent;
+      if (!rid) return toast('房间号为空');
+      if (!$('nameInput').value.trim()) {
+        toast('请先输入昵称');
+        $('nameInput').focus();
+        return;
+      }
+      joinRoom(rid);
+    });
+
     $('roomInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('joinBtn').click(); });
     $('nameInput').addEventListener('keydown', e => {
       if (e.key === 'Enter' && $('nameInput').value.trim()) $('createBtn').click();

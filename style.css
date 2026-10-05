@@ -678,3 +678,41 @@ button:disabled{opacity:.35;}
   background:linear-gradient(135deg,#2a1b1e,#1c332a);
   box-shadow:0 8px 28px rgba(230,57,70,.4);
 }
+
+/* ============= 邀请横幅 ============= */
+.invite-banner{
+  width:100%;max-width:320px;
+  background:linear-gradient(135deg,#e6a800,#d98c00);
+  border-radius:14px;
+  padding:14px 16px;
+  display:flex;flex-direction:column;gap:10px;
+  box-shadow:0 6px 20px rgba(230,168,0,.4);
+  animation:inviteGlow 1.6s infinite;
+}
+@keyframes inviteGlow{
+  0%,100%{box-shadow:0 6px 20px rgba(230,168,0,.4);}
+  50%{box-shadow:0 6px 28px rgba(230,168,0,.7);}
+}
+.invite-text{
+  color:#fff;font-size:calc(14px * var(--fs));font-weight:700;
+  text-align:center;
+}
+.invite-text b{
+  color:#1b3a2c;background:#fff;
+  padding:2px 10px;border-radius:8px;
+  font-family:monospace;letter-spacing:1px;
+  margin-left:4px;
+}
+.invite-btn{
+  background:#fff;color:#d98c00;
+  font-weight:900;font-size:calc(15px * var(--fs));
+  border-radius:10px;padding:10px 16px;
+  letter-spacing:1px;
+}
+.invite-btn:active{transform:scale(.96);}
+
+/* 复制成功的绿色提示 */
+.room-actions .copied{
+  background:rgba(42,157,143,.3)!important;
+  border-color:#2a9d8f!important;
+}

@@ -19,6 +19,11 @@
     <button id="settingsBtn" title="设置">⚙</button>
     <h1>UNO</h1>
 
+    <div id="inviteBanner" class="invite-banner" style="display:none">
+  <div class="invite-text">🎮 收到邀请：房间 <b id="inviteRoomId">----</b></div>
+  <button id="inviteJoinBtn" class="invite-btn">立即加入</button>
+</div>
+
     <div class="name-block">
       <div class="name-title">👤 你的昵称与头像</div>
       <input id="nameInput" placeholder="输入昵称（最多 8 字）" maxlength="8" autocomplete="off">
@@ -44,6 +49,7 @@
     </div>
     <div class="room-actions">
       <button id="copyRoomBtn" class="btn-secondary">📋 复制房间号</button>
+      <button id="shareBtn" class="btn-secondary">📤 分享</button>
       <button id="reconnectBtn" class="btn-secondary" style="display:none">🔄 重连</button>
     </div>
     <div class="room-warning">⚠️ 复制房间号发给朋友，请勿切换 App 太久</div>
