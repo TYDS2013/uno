@@ -16,7 +16,6 @@ button{cursor:pointer;}
 .screen{display:none;height:100%;flex-direction:column;}
 .screen.active{display:flex;}
 
-/* 顶部按钮 */
 #topBarLeft{position:fixed;top:16px;left:16px;display:none;gap:10px;z-index:30;}
 #topBarLeft.show{display:flex;}
 .top-btn{
@@ -31,7 +30,7 @@ button{cursor:pointer;}
 #guideBtn.show{display:flex;}
 
 /* 首页 */
-#home{justify-content:center;align-items:center;padding:24px;gap:18px;position:relative;}
+#home{justify-content:center;align-items:center;padding:24px;gap:18px;position:relative;overflow-y:auto;}
 #home h1{
   font-size:calc(52px * var(--fs));font-weight:900;letter-spacing:6px;
   background:linear-gradient(90deg,var(--red),var(--yellow),var(--green),var(--blue));
@@ -88,7 +87,6 @@ button:disabled{opacity:.35;}
 .action-row-2{display:flex;gap:10px;width:100%;max-width:320px;}
 .action-row-2 .btn-secondary{flex:1;padding:12px 8px;font-size:calc(14px * var(--fs));font-weight:700;}
 
-/* 邀请横幅 */
 .invite-banner{
   width:100%;max-width:320px;
   background:linear-gradient(135deg,#e6a800,#d98c00);
@@ -109,7 +107,6 @@ button:disabled{opacity:.35;}
 .invite-btn{background:#fff;color:#d98c00;font-weight:900;font-size:calc(15px * var(--fs));
   border-radius:10px;padding:10px 16px;letter-spacing:1px;}
 
-/* 头像选择 */
 .avatar-picker-inline{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;width:100%;}
 .avatar-option{
   aspect-ratio:1;display:flex;align-items:center;justify-content:center;
@@ -156,60 +153,66 @@ button:disabled{opacity:.35;}
 #playerList li .tag{color:#ffd166;font-size:calc(12px * var(--fs));font-weight:700;}
 
 /* 游戏 */
-#game{padding:8px 8px calc(8px + env(safe-area-inset-bottom));gap:4px;}
-#opponents{
-  display:flex;gap:10px;overflow-x:auto;padding:4px 2px;
-  flex:0 0 auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
-  margin-top:50px;
+#game{padding:8px 8px calc(8px + env(safe-area-inset-bottom));gap:4px;position:relative;}
+
+/* 圆圈布局容器 */
+#circleArena{
+  flex:1 1 auto;min-height:0;position:relative;
+  display:flex;align-items:center;justify-content:center;
 }
-#opponents::-webkit-scrollbar{display:none;}
+
+/* 对手环绕在圆圈上方（半圆） */
+#opponents{
+  position:absolute;top:56px;left:0;right:0;
+  display:flex;justify-content:center;align-items:flex-start;
+  gap:8px;flex-wrap:wrap;padding:0 8px;
+  z-index:5;
+}
 .opp{
-  background:var(--panel);border-radius:14px;padding:10px 12px;
-  min-width:92px;max-width:150px;flex:0 0 auto;
+  background:var(--panel);border-radius:12px;padding:6px 8px;
+  min-width:72px;max-width:100px;flex:0 0 auto;
   text-align:center;border:2px solid transparent;
-  transition:border-color .2s,box-shadow .2s;
-  display:flex;flex-direction:column;align-items:center;gap:5px;
+  transition:all .25s;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  position:relative;
 }
 .opp.active{
   border-color:#ffd166;
-  box-shadow:0 0 16px rgba(255,209,102,.5);
-  background:rgba(255,209,102,.1);
+  box-shadow:0 0 16px rgba(255,209,102,.55);
+  background:rgba(255,209,102,.12);
+  transform:translateY(-4px) scale(1.08);
 }
 .opp.spectator{opacity:.5;}
 .opp-avatar{
-  width:42px;height:42px;border-radius:50%;
+  width:36px;height:36px;border-radius:50%;
   background:linear-gradient(135deg,#2a9d8f,#21867a);
   display:flex;align-items:center;justify-content:center;
-  font-size:calc(22px * var(--fs));font-weight:900;color:#fff;
+  font-size:calc(18px * var(--fs));font-weight:900;color:#fff;
   border:2px solid rgba(255,255,255,.15);flex:0 0 auto;
   overflow:hidden;line-height:1;
 }
 .opp-name{
-  font-size:calc(13px * var(--fs));font-weight:700;
+  font-size:calc(11px * var(--fs));font-weight:700;
   width:100%;max-width:100%;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   padding:0 2px;line-height:1.2;
 }
-.opp-uno-btn{
-  font-size:calc(11px * var(--fs));background:var(--red);color:#fff;border:none;
-  border-radius:10px;padding:4px 12px;font-weight:900;
-  animation:pulse 1s infinite;margin-top:2px;
-}
 .opp-grace{
-  font-size:calc(10px * var(--fs));color:#ffd166;font-weight:800;
-  background:rgba(255,209,102,.15);padding:3px 8px;border-radius:8px;
+  font-size:calc(9px * var(--fs));color:#ffd166;font-weight:800;
+  background:rgba(255,209,102,.15);padding:2px 6px;border-radius:6px;
   font-variant-numeric:tabular-nums;
 }
-.opp-score{font-size:calc(10px * var(--fs));color:#ffd166;font-weight:700;}
-.opp-status{font-size:calc(10px * var(--fs));color:#7f9b8e;font-weight:700;}
-@keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.1);}}
+.opp-score{font-size:calc(9px * var(--fs));color:#ffd166;font-weight:700;}
+.opp-status{font-size:calc(9px * var(--fs));color:#7f9b8e;font-weight:700;}
 
 #status{
-  text-align:center;font-size:calc(14px * var(--fs));color:#9fc2b5;
-  height:22px;flex:0 0 auto;font-weight:600;
+  text-align:center;font-size:calc(13px * var(--fs));color:#9fc2b5;
+  height:20px;flex:0 0 auto;font-weight:600;
 }
-#table{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;
-  gap:36px;position:relative;}
+#table{
+  display:flex;align-items:center;justify-content:center;
+  gap:32px;position:relative;
+}
 
 .deck-wrap{position:relative;display:flex;flex-direction:column;align-items:center;}
 .deck-hint{
@@ -261,8 +264,7 @@ button:disabled{opacity:.35;}
 #discard{width:82px;height:120px;border-radius:14px;position:relative;transition:box-shadow .3s;}
 #discard .discard-shadow{
   position:absolute;inset:0;border-radius:14px;
-  border:3px solid rgba(255,255,255,.4);
-  background:rgba(0,0,0,.4);
+  border:3px solid rgba(255,255,255,.4);background:rgba(0,0,0,.4);
 }
 #discard .discard-shadow.s1{transform:translate(-3px,-3px) rotate(-3deg);opacity:.6;}
 #discard .discard-shadow.s2{transform:translate(-6px,-6px) rotate(-6deg);opacity:.35;}
@@ -357,14 +359,15 @@ button:disabled{opacity:.35;}
   animation:pulse 1s infinite;white-space:nowrap;
 }
 .catch-uno-btn.show{display:block;}
-#unoBtn{margin:0;padding:10px 30px;font-size:calc(16px * var(--fs));}
 #unoBtn{
   display:none;align-self:center;background:var(--red);
   font-weight:900;border-radius:30px;letter-spacing:3px;
   animation:pulse 0.8s infinite;
   box-shadow:0 0 20px rgba(230,57,70,.6);
+  margin:0;padding:10px 30px;font-size:calc(16px * var(--fs));
 }
 #unoBtn.show{display:block;}
+@keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.1);}}
 
 #passBtn{
   display:none;align-self:center;background:#e76f51;
@@ -378,7 +381,6 @@ button:disabled{opacity:.35;}
   font-size:calc(14px * var(--fs));font-weight:600;letter-spacing:2px;
 }
 
-/* 遮罩 */
 .overlay{
   position:fixed;inset:0;background:rgba(0,0,0,.75);
   -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
@@ -500,7 +502,6 @@ button:disabled{opacity:.35;}
 .guide-p{font-size:calc(13px * var(--fs));color:#c5d8cf;line-height:1.85;}
 .guide-p b{color:#fff;font-weight:800;}
 
-/* 聊天 */
 #chatToggleBtn{
   position:fixed;top:16px;right:16px;width:50px;height:50px;border-radius:50%;
   background:linear-gradient(135deg,#2a9d8f,#21867a);
@@ -638,8 +639,17 @@ button:disabled{opacity:.35;}
   color:#ffd166;display:block;margin-top:6px;
   font-size:calc(13px * var(--fs));font-weight:600;
 }
-
 .room-actions .copied{
   background:rgba(42,157,143,.3)!important;
   border-color:#2a9d8f!important;
+}
+
+/* 匹配模式：隐藏房间号 */
+#room.match-mode .room-head .code { font-size:calc(28px * var(--fs)); letter-spacing:4px; }
+
+/* 小屏幕 10 人时缩小对手卡 */
+@media (max-width: 480px){
+  .opp { min-width:56px; max-width:78px; padding:5px 6px; }
+  .opp-avatar { width:28px; height:28px; font-size:calc(14px * var(--fs)); }
+  .opp-name { font-size:calc(10px * var(--fs)); }
 }

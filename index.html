@@ -9,8 +9,6 @@
 <meta name="theme-color" content="#1b3a2c">
 
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231c332a'/%3E%3Crect x='12' y='9' width='40' height='46' rx='6' fill='%23e63946' stroke='%23ffffff' stroke-width='2.5'/%3E%3Ctext x='32' y='39' text-anchor='middle' font-family='Arial Black, sans-serif' font-size='18' font-weight='900' fill='%23ffffff' font-style='italic'%3EUNO%3C/text%3E%3C/svg%3E">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='38' fill='%231c332a'/%3E%3Crect x='34' y='24' width='112' height='132' rx='16' fill='%23e63946' stroke='%23ffffff' stroke-width='7'/%3E%3Ctext x='90' y='110' text-anchor='middle' font-family='Arial Black, sans-serif' font-size='52' font-weight='900' fill='%23ffffff' font-style='italic'%3EUNO%3C/text%3E%3C/svg%3E">
-
 <title>UNO</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -18,7 +16,6 @@
 <body>
 
 <div id="app">
-  <!-- ============ 首页 ============ -->
   <section id="home" class="screen active">
     <button id="settingsBtn" title="设置">⚙</button>
     <h1>UNO</h1>
@@ -49,37 +46,36 @@
     </div>
   </section>
 
-  <!-- ============ 房间 ============ -->
   <section id="room" class="screen">
     <div class="room-head">
-      <div class="label">房 间 号</div>
+      <div class="label" id="roomLabel">房 间 号</div>
       <div class="code" id="roomCode">----</div>
       <div class="hint" id="roomServerHint"></div>
     </div>
-    <div class="room-actions">
+    <div class="room-actions" id="roomActions">
       <button id="copyRoomBtn" class="btn-secondary">📋 复制邀请链接</button>
       <button id="shareBtn" class="btn-secondary">📤 分享</button>
       <button id="reconnectBtn" class="btn-secondary" style="display:none">🔄 重连</button>
     </div>
-    <div class="room-warning">⚠️ 复制房间号发给朋友，请勿切换 App 太久</div>
+    <div class="room-warning" id="roomWarning">⚠️ 复制房间号发给朋友，请勿切换 App 太久</div>
     <ul id="playerList"></ul>
     <button id="startBtn" class="btn-primary">开始游戏</button>
     <div id="waitTip" class="hint" style="display:none">等待房主开始…</div>
   </section>
 
-  <!-- ============ 游戏 ============ -->
   <section id="game" class="screen">
-    <div id="opponents"></div>
-    <div id="status"></div>
-    <div id="table">
-      <div id="deckWrap" class="deck-wrap">
-        <div id="deck" class="card back">
-          <span class="deck-inner-label">UNO</span>
+    <!-- 圆圈布局容器 -->
+    <div id="circleArena">
+      <div id="opponents"></div>
+      <div id="table">
+        <div id="deckWrap" class="deck-wrap">
+          <div id="deck" class="card back"><span class="deck-inner-label">UNO</span></div>
+          <div class="deck-hint" id="deckHint">👆 点我摸牌</div>
         </div>
-        <div class="deck-hint" id="deckHint">👆 点我摸牌</div>
+        <div id="discard" class="slot"></div>
       </div>
-      <div id="discard" class="slot"></div>
     </div>
+    <div id="status"></div>
     <div id="myScoreBadge" class="my-score-badge" style="display:none">积分：0</div>
     <div class="action-buttons-row">
       <button id="catchUnoBtn" class="catch-uno-btn">抓 UNO</button>
@@ -90,7 +86,6 @@
   </section>
 </div>
 
-<!-- ============ 顶部左侧 ============ -->
 <div id="topBarLeft">
   <button id="exitBtn" class="top-btn">←</button>
   <button id="rulesBtn" class="top-btn">📋</button>
@@ -98,7 +93,6 @@
 <button id="guideBtn" class="top-btn">❓</button>
 <button id="chatToggleBtn">💬<span id="chatBadge" class="chat-badge">0</span></button>
 
-<!-- ============ 聊天 ============ -->
 <div id="chatPanel">
   <div class="chat-header">
     <span>聊 天</span>
@@ -120,7 +114,6 @@
   </div>
 </div>
 
-<!-- ============ 选色 ============ -->
 <div id="colorPicker" class="overlay">
   <div class="picker-box">
     <div class="picker-title">选择颜色</div>
@@ -133,7 +126,6 @@
   </div>
 </div>
 
-<!-- ============ 质疑 +4 ============ -->
 <div id="challengeOverlay" class="overlay">
   <div class="picker-box">
     <div class="picker-title" id="challengeText">下家对你打出 +4</div>
@@ -145,7 +137,6 @@
   </div>
 </div>
 
-<!-- ============ 换牌 ============ -->
 <div id="swapOverlay" class="overlay">
   <div class="picker-box">
     <div class="picker-title">选择一名玩家交换手牌</div>
@@ -153,7 +144,6 @@
   </div>
 </div>
 
-<!-- ============ 结算 ============ -->
 <div id="overlay" class="overlay">
   <div class="picker-box">
     <div id="overlayTitle" class="picker-title"></div>
@@ -162,16 +152,13 @@
   </div>
 </div>
 
-<!-- ============ 设置 ============ -->
 <div id="settingsPanel" class="overlay">
   <div class="settings-box">
     <div class="settings-title">设 置</div>
-
     <div class="setting-item">
       <div class="setting-label"><span>你的头像</span></div>
       <div class="avatar-picker-inline" id="avatarPickerSettings"></div>
     </div>
-
     <div class="setting-item">
       <div class="setting-label"><span>音量</span><span class="setting-value"><span id="volumeValue">100</span>%</span></div>
       <div class="slider-row">
@@ -180,7 +167,6 @@
         <span style="color:#9fc2b5">🔊</span>
       </div>
     </div>
-
     <div class="setting-item">
       <div class="setting-label"><span>字体大小</span><span class="setting-value"><span id="fontValue">100</span>%</span></div>
       <div class="slider-row">
@@ -189,21 +175,11 @@
         <span style="color:#9fc2b5;font-size:20px">A</span>
       </div>
     </div>
-
-    <div class="rule-row" style="display:none">
-      <div><div class="rule-label">显示游戏事件</div><div class="rule-desc">已废弃</div></div>
-      <label class="toggle-switch">
-        <input type="checkbox" id="showSysToggle">
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
-
     <div class="setting-item">
       <div class="setting-label"><span>备用信令服务器地址（可选）</span></div>
       <input type="text" id="vercelHostInput" placeholder="留空则使用内置地址"
              style="max-width:none;text-align:left;font-size:13px;padding:10px 12px">
     </div>
-
     <div class="setting-item">
       <div class="setting-label"><span>关于</span></div>
       <div class="about-text">
@@ -217,28 +193,15 @@
   </div>
 </div>
 
-<!-- ============ 房规 ============ -->
 <div id="rulesPanel" class="overlay">
   <div class="settings-box">
     <div class="settings-title">房 规</div>
     <div class="setting-item">
       <div class="setting-label"><span>游戏模式</span></div>
       <div class="mode-group">
-        <label class="mode-option" data-mode="single">
-          <input type="radio" name="gameMode" value="single">
-          <span class="mode-check"></span>
-          <span>单局制</span>
-        </label>
-        <label class="mode-option" data-mode="score">
-          <input type="radio" name="gameMode" value="score">
-          <span class="mode-check"></span>
-          <span>累积 500 分</span>
-        </label>
-        <label class="mode-option" data-mode="elimination">
-          <input type="radio" name="gameMode" value="elimination">
-          <span class="mode-check"></span>
-          <span>淘汰制 · 输家观战</span>
-        </label>
+        <label class="mode-option" data-mode="single"><input type="radio" name="gameMode" value="single"><span class="mode-check"></span><span>单局制</span></label>
+        <label class="mode-option" data-mode="score"><input type="radio" name="gameMode" value="score"><span class="mode-check"></span><span>累积 500 分</span></label>
+        <label class="mode-option" data-mode="elimination"><input type="radio" name="gameMode" value="elimination"><span class="mode-check"></span><span>淘汰制 · 输家观战</span></label>
       </div>
     </div>
     <div class="rule-row">
@@ -261,42 +224,23 @@
   </div>
 </div>
 
-<!-- ============ 人机配置 ============ -->
 <div id="aiConfigPanel" class="overlay">
   <div class="settings-box">
     <div class="settings-title">🤖 人机对战</div>
     <div class="setting-item">
       <div class="setting-label"><span>玩家人数（含你）</span></div>
       <div class="mode-group">
-        <label class="mode-option active" data-ai-count="2">
-          <input type="radio" name="aiCount" value="2" checked>
-          <span class="mode-check"></span><span>2 人（1 个 AI）</span>
-        </label>
-        <label class="mode-option" data-ai-count="3">
-          <input type="radio" name="aiCount" value="3">
-          <span class="mode-check"></span><span>3 人（2 个 AI）</span>
-        </label>
-        <label class="mode-option" data-ai-count="4">
-          <input type="radio" name="aiCount" value="4">
-          <span class="mode-check"></span><span>4 人（3 个 AI）</span>
-        </label>
+        <label class="mode-option active" data-ai-count="2"><input type="radio" name="aiCount" value="2" checked><span class="mode-check"></span><span>2 人</span></label>
+        <label class="mode-option" data-ai-count="3"><input type="radio" name="aiCount" value="3"><span class="mode-check"></span><span>3 人</span></label>
+        <label class="mode-option" data-ai-count="4"><input type="radio" name="aiCount" value="4"><span class="mode-check"></span><span>4 人</span></label>
       </div>
     </div>
     <div class="setting-item">
       <div class="setting-label"><span>难度</span></div>
       <div class="mode-group">
-        <label class="mode-option active" data-ai-diff="easy">
-          <input type="radio" name="aiDiff" value="easy" checked>
-          <span class="mode-check"></span><span>简单 · 随机出牌</span>
-        </label>
-        <label class="mode-option" data-ai-diff="normal">
-          <input type="radio" name="aiDiff" value="normal">
-          <span class="mode-check"></span><span>普通 · 有点策略</span>
-        </label>
-        <label class="mode-option" data-ai-diff="hard">
-          <input type="radio" name="aiDiff" value="hard">
-          <span class="mode-check"></span><span>困难 · 保留万能牌</span>
-        </label>
+        <label class="mode-option active" data-ai-diff="easy"><input type="radio" name="aiDiff" value="easy" checked><span class="mode-check"></span><span>简单</span></label>
+        <label class="mode-option" data-ai-diff="normal"><input type="radio" name="aiDiff" value="normal"><span class="mode-check"></span><span>普通</span></label>
+        <label class="mode-option" data-ai-diff="hard"><input type="radio" name="aiDiff" value="hard"><span class="mode-check"></span><span>困难</span></label>
       </div>
     </div>
     <button id="aiStartBtn" class="btn-primary" style="max-width:none;width:100%">开始对战</button>
@@ -304,34 +248,30 @@
   </div>
 </div>
 
-<!-- ============ 匹配大厅 ============ -->
 <div id="matchConfigPanel" class="overlay">
   <div class="settings-box">
     <div class="settings-title">🎲 随机匹配</div>
     <div class="setting-hint" style="font-size:13px;color:#9fc2b5;text-align:center;line-height:1.7;margin-bottom:8px">
-      加入大厅后，2-4 人自动匹配开局<br>满 4 人立即开始，否则等待 15 秒
+      进入大厅后自动匹配，满 2 人即可开局<br>最多 10 人同场竞技
     </div>
-    <button id="matchPeerBtn" class="btn-primary" style="max-width:none;width:100%">🌐 PeerJS 大厅</button>
+    <button id="matchPeerBtn" class="btn-primary" style="max-width:none;width:100%">🌐 官方大厅</button>
     <button id="matchVercelBtn" class="btn-primary" style="max-width:none;width:100%;background:linear-gradient(135deg,#e6a800,#d98c00);margin-top:10px">☁️ 备用大厅</button>
     <button id="matchCancelBtn" class="btn-secondary" style="width:100%;margin-top:10px">取消</button>
   </div>
 </div>
 
-<!-- ============ 玩法指南 ============ -->
 <div id="guidePanel" class="overlay">
   <div class="guide-box">
     <div class="settings-title">📖 玩法指南</div>
-
     <div class="guide-section">
       <div class="guide-h">🎯 游戏目标</div>
       <div class="guide-p">
         率先打光自己的手牌。三种模式：<br>
         • <b>单局制</b>：一局定胜负<br>
         • <b>计分制</b>：每局赢家按输家手牌计分，累积 <b>500 分</b> 获胜<br>
-        • <b>淘汰制</b>：每局结束后手牌分最高的玩家出局进入观战，最后一人获胜
+        • <b>淘汰制</b>：每局结束后手牌分最高的玩家出局进入观战
       </div>
     </div>
-
     <div class="guide-section">
       <div class="guide-h">🎴 牌面说明</div>
       <div class="guide-p">
@@ -340,53 +280,28 @@
         • <b>反转 ⇄</b>：出牌方向颠倒<br>
         • <b>+2</b>：下家摸 2 张并跳过<br>
         • <b>变色 ★</b>：出牌后指定颜色<br>
-        • <b>+4</b>：指定颜色，下家摸 4 张并跳过；<br>
-        &nbsp;&nbsp;若房规开启质疑，下家可选择「质疑」<br>
-        &nbsp;&nbsp;质疑成功 → 出牌者罚摸 4 张<br>
-        &nbsp;&nbsp;质疑失败 → 质疑者罚摸 6 张
+        • <b>+4</b>：指定颜色，下家摸 4 张并跳过
       </div>
     </div>
-
     <div class="guide-section">
       <div class="guide-h">🕹 操作方式</div>
       <div class="guide-p">
         • <b>出牌</b>：轮到你时，可出的牌会浮起发光，点一下打出<br>
-        • <b>摸牌</b>：点击中间的<b>牌堆</b>摸一张<br>
-        • <b>选颜色</b>：出万能牌时弹出颜色选择<br>
+        • <b>摸牌</b>：点击中间的牌堆摸一张<br>
         • <b>UNO</b>：剩 1 张牌时点红色「UNO!」按钮（有 2 秒保护期）<br>
         • <b>抓 UNO</b>：对手剩 1 张牌但忘了喊 UNO，点「抓 UNO」
       </div>
     </div>
-
     <div class="guide-section">
-      <div class="guide-h">⌨️ 键盘快捷键（电脑端）</div>
+      <div class="guide-h">⌨️ 键盘快捷键</div>
       <div class="guide-p">
-        • <b>数字 1-9</b>：出第 N 张手牌<br>
-        • <b>空格</b>：摸一张牌<br>
-        • <b>回车</b>：跳过回合<br>
+        • <b>1-9</b>：出第 N 张手牌<br>
+        • <b>空格</b>：摸牌<br>
+        • <b>回车</b>：跳过<br>
         • <b>U</b>：喊 UNO<br>
-        • <b>K</b>：抓 UNO（需等保护期结束后才能生效）
+        • <b>K</b>：抓 UNO
       </div>
     </div>
-
-    <div class="guide-section">
-      <div class="guide-h">📢 UNO 保护期规则</div>
-      <div class="guide-p">
-        当你剩 1 张牌时，系统会给你 <b>2 秒保护期</b>，此期间对手无法抓你。<br>
-        请尽快点「UNO!」按钮或按 <b>U</b> 键。保护期过后若还没喊 UNO，对手就能抓你，你要罚摸 2 张。
-      </div>
-    </div>
-
-    <div class="guide-section">
-      <div class="guide-h">🏠 房规（房主可在房规里开关）</div>
-      <div class="guide-p">
-        • <b>+2 / +4 堆叠</b>：允许用同类牌回应，罚抽累加<br>
-        • <b>强制出牌</b>：摸到能出的牌必须打出<br>
-        • <b>7-0 规则</b>：打出 7 可与指定玩家交换手牌；打出 0 全员按方向传递手牌<br>
-        • <b>+4 质疑</b>：关闭后 +4 直接罚抽 4 张，不弹质疑窗
-      </div>
-    </div>
-
     <button id="guideCloseBtn" class="btn-primary" style="max-width:none">我知道了</button>
   </div>
 </div>
