@@ -1361,7 +1361,7 @@
     const cur = room.players[room.turnIndex];
     if (!cur || !cur.isAI) return;
     room._aiTurnScheduled = true;
-    const delay = 700 + Math.random() * 900;
+    const delay = 2000 + Math.random() * 8000;
     const aiId = cur.id;
     setTimeout(() => {
       const r = state.room;

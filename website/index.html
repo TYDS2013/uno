@@ -1,0 +1,1463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>UNO — 官方主页</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231c332a'/%3E%3Crect x='12' y='9' width='40' height='46' rx='6' fill='%23e63946' stroke='%23ffffff' stroke-width='2.5'/%3E%3Ctext x='32' y='39' text-anchor='middle' font-family='Arial Black, sans-serif' font-size='18' font-weight='900' fill='%23ffffff' font-style='italic'%3EUNO%3C/text%3E%3C/svg%3E">
+  <style>
+    /* ============================================================
+       CSS 变量 —— 亮色 / 暗色主题双模式
+       ============================================================ */
+    :root {
+      --bg-primary: #F6FAFD;
+      --bg-secondary: #FFFFFF;
+      --bg-tertiary: #E6EEF7;
+      --text-primary: #283755;
+      --text-secondary: #5A6B85;
+      --text-muted: #8A9BB5;
+      --accent: #4176E6;
+      --accent-light: #6B9EFF;
+      --accent-glow: rgba(65, 118, 230, 0.15);
+      --border: #D5E1F1;
+      --shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.1);
+      --glass: rgba(255, 255, 255, 0.72);
+      --glass-border: rgba(255, 255, 255, 0.3);
+      --grid-color: rgba(65, 118, 230, 0.06);
+      --card-red: #E63946;
+      --card-yellow: #E6A800;
+      --card-green: #2A9D8F;
+      --card-blue: #3A7BD5;
+      --nav-height: 64px;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-xl: 28px;
+      --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      --transition-theme: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                          color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                          border-color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                          box-shadow 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #07182B;
+      --bg-secondary: #0C2238;
+      --bg-tertiary: #142F4A;
+      --text-primary: #E8F0F8;
+      --text-secondary: #9BB3CC;
+      --text-muted: #5A7A99;
+      --accent: #60A5FA;
+      --accent-light: #93C5FD;
+      --accent-glow: rgba(96, 165, 250, 0.12);
+      --border: #1E3A5A;
+      --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+      --shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.5);
+      --glass: rgba(7, 24, 43, 0.78);
+      --glass-border: rgba(255, 255, 255, 0.06);
+      --grid-color: rgba(96, 165, 250, 0.06);
+    }
+
+    /* ============================================================
+       基础重置
+       ============================================================ */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      font-family: var(--font);
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      transition: var(--transition-theme);
+      overflow-x: hidden;
+      line-height: 1.6;
+      min-height: 100vh;
+      background-image:
+        linear-gradient(var(--grid-color) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+      background-size: 88px 88px;
+      background-position: center top;
+    }
+
+    /* ============================================================
+       顶部导航栏
+       ============================================================ */
+    .navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--nav-height);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      background: var(--glass);
+      backdrop-filter: blur(20px) saturate(1.4);
+      -webkit-backdrop-filter: blur(20px) saturate(1.4);
+      border-bottom: 1px solid var(--border);
+      z-index: 1000;
+      transition: var(--transition-theme);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: var(--text-primary);
+      text-decoration: none;
+      transition: var(--transition-theme);
+    }
+
+    /* 重绘后的新 Logo —— 使用内联 SVG，更精致、更接近真实 UNO 卡牌 */
+    .logo-svg {
+      width: 38px;
+      height: 38px;
+      flex-shrink: 0;
+      filter: drop-shadow(0 2px 6px rgba(65, 118, 230, 0.25));
+    }
+
+    /* 当主题切换时，logo 阴影跟随调整 */
+    [data-theme="dark"] .logo-svg {
+      filter: drop-shadow(0 2px 8px rgba(96, 165, 250, 0.35));
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      display: inline-block;
+      padding: 8px 18px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: all 0.25s ease;
+    }
+
+    .nav-links a:hover,
+    .nav-links a.active {
+      color: var(--accent);
+      background: var(--accent-glow);
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .theme-toggle {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: var(--transition-theme);
+      flex-shrink: 0;
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+      transform: rotate(15deg);
+    }
+
+    .dev-contact {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: var(--transition-theme);
+      white-space: nowrap;
+    }
+
+    .dev-contact:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .nav-hamburger {
+      display: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      cursor: pointer;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 0;
+    }
+
+    .nav-hamburger span {
+      display: block;
+      width: 18px;
+      height: 2px;
+      background: var(--text-primary);
+      border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+
+    /* ============================================================
+       页面容器 —— 滑动式纵向布局
+       ============================================================ */
+    .page-container {
+      padding-top: var(--nav-height);
+      scroll-snap-type: y proximity;
+      height: 100vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .page-container::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .page-container::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    .slide-section {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 32px;
+      position: relative;
+      overflow: hidden;
+      scroll-snap-align: start;
+      transition: var(--transition-theme);
+    }
+
+    /* ============================================================
+       Hero 区域
+       ============================================================ */
+    .hero-content {
+      max-width: 900px;
+      text-align: center;
+      position: relative;
+      z-index: 2;
+      animation: fadeInUp 1s ease-out;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .hero-badge {
+      display: inline-block;
+      padding: 6px 18px;
+      border-radius: 999px;
+      background: var(--accent-glow);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      margin-bottom: 24px;
+    }
+
+    .hero-title {
+      font-size: clamp(48px, 10vw, 96px);
+      font-weight: 900;
+      letter-spacing: 6px;
+      line-height: 1.1;
+      background: linear-gradient(135deg, var(--card-red), var(--card-yellow), var(--card-green), var(--card-blue));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .hero-subtitle {
+      font-size: clamp(16px, 2.5vw, 20px);
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto 40px;
+      line-height: 1.8;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 32px;
+      border-radius: var(--radius-md);
+      font-size: 16px;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: all 0.25s ease;
+      font-family: var(--font);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      color: #fff;
+      box-shadow: 0 4px 16px var(--accent-glow);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px var(--accent-glow);
+    }
+
+    .btn-outline {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-outline:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .floating-cards {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .floating-card {
+      position: absolute;
+      width: 70px;
+      height: 105px;
+      border-radius: 10px;
+      border: 3px solid #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 26px;
+      color: #fff;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+      opacity: 0.18;
+      animation: floatCard 6s ease-in-out infinite;
+    }
+
+    .floating-card.red    { background: linear-gradient(160deg, #f2545b, #c1121f); top: 15%; left: 8%; }
+    .floating-card.yellow { background: linear-gradient(160deg, #ffc93c, #d98c00); top: 60%; left: 4%; animation-delay: -2s; }
+    .floating-card.green  { background: linear-gradient(160deg, #43aa8b, #1e7563); top: 20%; right: 6%; animation-delay: -4s; }
+    .floating-card.blue   { background: linear-gradient(160deg, #4d8bf0, #2456a8); top: 65%; right: 10%; animation-delay: -1s; }
+
+    @keyframes floatCard {
+      0%, 100% { transform: translateY(0) rotate(-6deg); }
+      50% { transform: translateY(-20px) rotate(6deg); }
+    }
+
+    /* ============================================================
+       统计数字 —— 不依赖滚动，页面加载即触发
+       ============================================================ */
+    .stats-row {
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      flex-wrap: wrap;
+      margin-top: 56px;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: clamp(32px, 6vw, 48px);
+      font-weight: 900;
+      color: var(--accent);
+      line-height: 1.2;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 600;
+      letter-spacing: 1px;
+      margin-top: 4px;
+    }
+
+    /* ============================================================
+       功能特性区域
+       ============================================================ */
+    .section-title {
+      font-size: clamp(28px, 5vw, 42px);
+      font-weight: 900;
+      text-align: center;
+      margin-bottom: 12px;
+      letter-spacing: 2px;
+    }
+
+    .section-desc {
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 16px;
+      margin-bottom: 56px;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+      max-width: 1000px;
+      width: 100%;
+    }
+
+    .feature-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 32px 28px;
+      transition: var(--transition-theme);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--card-red), var(--card-yellow), var(--card-green), var(--card-blue));
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-6px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .feature-card:hover::before {
+      opacity: 1;
+    }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 20px;
+      background: var(--accent-glow);
+    }
+
+    .feature-title {
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+
+    .feature-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.8;
+    }
+
+    /* ============================================================
+       使用文档区域
+       ============================================================ */
+    .docs-layout {
+      display: flex;
+      gap: 40px;
+      max-width: 1000px;
+      width: 100%;
+      align-items: flex-start;
+    }
+
+    .docs-nav {
+      flex: 0 0 200px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: sticky;
+      top: calc(var(--nav-height) + 40px);
+    }
+
+    .docs-nav-item {
+      padding: 12px 18px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border-left: 3px solid transparent;
+    }
+
+    .docs-nav-item:hover {
+      background: var(--accent-glow);
+      color: var(--accent);
+    }
+
+    .docs-nav-item.active {
+      background: var(--accent-glow);
+      color: var(--accent);
+      border-left-color: var(--accent);
+    }
+
+    .docs-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .docs-pane {
+      display: none;
+      animation: fadeInUp 0.4s ease-out;
+    }
+
+    .docs-pane.active {
+      display: block;
+    }
+
+    .docs-pane h3 {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .docs-pane p {
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.9;
+      margin-bottom: 16px;
+    }
+
+    .docs-pane code {
+      background: var(--bg-tertiary);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 13px;
+      color: var(--accent);
+    }
+
+    .docs-step {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      align-items: flex-start;
+    }
+
+    .docs-step-num {
+      flex: 0 0 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .docs-step-body {
+      flex: 1;
+    }
+
+    .docs-step-body h4 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .docs-step-body p {
+      font-size: 14px;
+      margin-bottom: 0;
+    }
+
+    /* ============================================================
+       关于页面
+       ============================================================ */
+    .about-container {
+      max-width: 720px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .about-logo {
+      width: 100px;
+      height: 100px;
+      border-radius: 28px;
+      background: linear-gradient(135deg, var(--card-red), var(--card-yellow), var(--card-green), var(--card-blue));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 28px;
+      box-shadow: 0 12px 40px rgba(65, 118, 230, 0.25);
+    }
+
+    .about-logo svg {
+      width: 60px;
+      height: 60px;
+    }
+
+    .about-version {
+      display: inline-block;
+      padding: 4px 14px;
+      border-radius: 999px;
+      background: var(--bg-tertiary);
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 24px;
+    }
+
+    .about-text {
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 2;
+      margin-bottom: 32px;
+      text-align: left;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px 32px;
+      border-left: 4px solid var(--accent);
+    }
+
+    .about-links {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    /* ============================================================
+       底部版权栏
+       ============================================================ */
+    .footer {
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      padding: 48px 32px 32px;
+      transition: var(--transition-theme);
+    }
+
+    .footer-inner {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .footer-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 40px;
+      margin-bottom: 40px;
+      flex-wrap: wrap;
+    }
+
+    .footer-brand {
+      max-width: 280px;
+    }
+
+    .footer-brand .nav-logo {
+      margin-bottom: 12px;
+    }
+
+    .footer-brand p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.8;
+    }
+
+    .footer-nav-group h4 {
+      font-size: 14px;
+      font-weight: 800;
+      margin-bottom: 16px;
+      color: var(--text-primary);
+    }
+
+    .footer-nav-group ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .footer-nav-group a {
+      font-size: 13px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .footer-nav-group a:hover {
+      color: var(--accent);
+    }
+
+    .footer-bottom {
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .footer-legal {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .footer-legal p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .footer-legal .heart {
+      color: var(--card-red);
+    }
+
+    /* 免责声明区 —— 低调但完整 */
+    .footer-disclaimer {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      line-height: 1.9;
+      background: var(--bg-tertiary);
+      border-left: 3px solid var(--border);
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+    }
+
+    .footer-disclaimer a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 700;
+      border-bottom: 1px dashed var(--accent);
+      transition: all 0.2s ease;
+    }
+
+    .footer-disclaimer a:hover {
+      color: var(--accent-light);
+      border-bottom-style: solid;
+    }
+
+    .footer-disclaimer strong {
+      color: var(--text-secondary);
+      font-weight: 700;
+    }
+
+    /* ============================================================
+       响应式适配
+       ============================================================ */
+    @media (max-width: 768px) {
+      .navbar {
+        padding: 0 16px;
+      }
+
+      .nav-links {
+        display: none;
+        position: fixed;
+        top: var(--nav-height);
+        left: 0;
+        right: 0;
+        background: var(--glass);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        flex-direction: column;
+        padding: 16px;
+        border-bottom: 1px solid var(--border);
+        gap: 4px;
+      }
+
+      .nav-links.open {
+        display: flex;
+      }
+
+      .nav-links a {
+        width: 100%;
+        padding: 14px 18px;
+      }
+
+      .nav-hamburger {
+        display: flex;
+      }
+
+      .dev-contact span:not(:first-child) {
+        display: none;
+      }
+
+      .dev-contact {
+        padding: 8px 12px;
+      }
+
+      .slide-section {
+        padding: 60px 20px;
+      }
+
+      .docs-layout {
+        flex-direction: column;
+      }
+
+      .docs-nav {
+        flex-direction: row;
+        flex: none;
+        width: 100%;
+        position: static;
+        overflow-x: auto;
+        padding-bottom: 8px;
+      }
+
+      .docs-nav-item {
+        white-space: nowrap;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+      }
+
+      .docs-nav-item.active {
+        border-left: none;
+        border-bottom-color: var(--accent);
+      }
+
+      .hero-actions {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .btn {
+        width: 100%;
+        max-width: 280px;
+        justify-content: center;
+      }
+
+      .floating-card {
+        width: 50px;
+        height: 75px;
+        font-size: 18px;
+        border-width: 2px;
+      }
+
+      .footer-top {
+        flex-direction: column;
+        gap: 28px;
+      }
+    }
+
+    /* 滚动出现动画 */
+    .reveal {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ============================================================
+       顶部导航栏
+       ============================================================ -->
+  <nav class="navbar">
+    <a href="#hero" class="nav-logo">
+      <!-- 页面内 Logo 保持原来的渐变设计 -->
+      <svg class="logo-svg" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-label="UNO Logo">
+        <defs>
+          <linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#E63946"/>
+            <stop offset="33%" stop-color="#E6A800"/>
+            <stop offset="66%" stop-color="#2A9D8F"/>
+            <stop offset="100%" stop-color="#3A7BD5"/>
+          </linearGradient>
+        </defs>
+        <rect x="4" y="4" width="40" height="40" rx="11" fill="url(#logoGrad)"/>
+        <rect x="4" y="4" width="40" height="40" rx="11" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1"/>
+        <ellipse cx="24" cy="24" rx="14" ry="9.5" fill="#ffffff"/>
+        <text x="24" y="28.5" text-anchor="middle"
+              font-family="Arial Black, Helvetica, sans-serif"
+              font-size="9.5" font-weight="900" font-style="italic"
+              fill="#E63946" letter-spacing="0.3">UNO</text>
+      </svg>
+      <span>UNO</span>
+    </a>
+
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#hero" class="active" data-nav="hero">主页</a></li>
+      <li><a href="#features" data-nav="features">功能特性</a></li>
+      <li><a href="#docs" data-nav="docs">使用文档</a></li>
+      <li><a href="#about" data-nav="about">关于</a></li>
+    </ul>
+
+    <div class="nav-right">
+      <button class="theme-toggle" id="themeToggle" title="切换亮色/暗色模式" aria-label="切换主题">
+        <span id="themeIcon">🌙</span>
+      </button>
+      <a href="mailto:Minecraft_tyds@outlook.com" class="dev-contact" title="联系开发者">
+        <span>✉️</span>
+        <span>联系开发者</span>
+      </a>
+      <button class="nav-hamburger" id="hamburger" aria-label="菜单">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ============================================================
+       页面主体
+       ============================================================ -->
+  <main class="page-container" id="pageContainer">
+
+    <!-- ========== 第一屏：Hero ========== -->
+    <section class="slide-section" id="hero">
+      <div class="floating-cards">
+        <div class="floating-card red">7</div>
+        <div class="floating-card yellow">+2</div>
+        <div class="floating-card green">⇄</div>
+        <div class="floating-card blue">★</div>
+      </div>
+
+      <div class="hero-content">
+        <div class="hero-badge">🎮 完全免费 · 无需下载</div>
+        <h1 class="hero-title">UNO</h1>
+        <p class="hero-subtitle">
+          经典卡牌，实时对战。基于 WebRTC 的点对点技术，无需中心服务器即可与好友开局。
+          支持人机、随机匹配、成就称号，最多 10 人同场竞技。
+        </p>
+        <div class="hero-actions">
+          <a href="#docs" class="btn btn-primary">📖 查看使用文档</a>
+          <a href="https://cjyj.top/uno/" target="_blank" rel="noopener" class="btn btn-outline">🚀 立即开始游戏</a>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-item">
+            <div class="stat-number" data-count="108">0</div>
+            <div class="stat-label">标准牌数</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number" data-count="10">0</div>
+            <div class="stat-label">最大人数</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number" data-count="3">0</div>
+            <div class="stat-label">游戏模式</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number" data-count="0">0</div>
+            <div class="stat-label">服务器依赖</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 第二屏：功能特性 ========== -->
+    <section class="slide-section" id="features">
+      <div style="max-width: 1000px; width: 100%;">
+        <h2 class="section-title reveal">功能特性</h2>
+        <p class="section-desc reveal">从经典规则到创新玩法，为你提供完整的 UNO 体验</p>
+
+        <div class="feature-grid">
+          <div class="feature-card reveal">
+            <div class="feature-icon">🌐</div>
+            <h3 class="feature-title">P2P 联机对战</h3>
+            <p class="feature-desc">基于 WebRTC 点对点技术，无需中心服务器。通过 PeerJS 信令服务器建立连接，游戏数据直接在玩家之间传输，低延迟、高隐私。</p>
+          </div>
+          <div class="feature-card reveal">
+            <div class="feature-icon">🤖</div>
+            <h3 class="feature-title">人机对战</h3>
+            <p class="feature-desc">支持 2-4 人对战，提供简单、普通、困难三档 AI 难度。AI 拥有随机化思考时间和策略决策能力，可在本地离线运行。</p>
+          </div>
+          <div class="feature-card reveal">
+            <div class="feature-icon">🎲</div>
+            <h3 class="feature-title">随机匹配大厅</h3>
+            <p class="feature-desc">进入大厅后自动匹配，满 2 人即可开局，最多支持 10 人同场竞技。满 4 人立即开始，否则等待 15 秒倒计时。</p>
+          </div>
+          <div class="feature-card reveal">
+            <div class="feature-icon">🏆</div>
+            <h3 class="feature-title">成就称号系统</h3>
+            <p class="feature-desc">根据连胜场次、UNO 喊话次数、+4 出牌数、被罚抽次数等自动计算称号。包含 13 个成就等级，从新手到王者。</p>
+          </div>
+          <div class="feature-card reveal">
+            <div class="feature-icon">🎴</div>
+            <h3 class="feature-title">完整规则支持</h3>
+            <p class="feature-desc">支持官方规则与多种村规：+2/+4 堆叠、7-0 规则、强制出牌、+4 质疑判定。房主可自由开关每项规则。</p>
+          </div>
+          <div class="feature-card reveal">
+            <div class="feature-icon">📱</div>
+            <h3 class="feature-title">全平台响应式</h3>
+            <p class="feature-desc">完美适配手机、平板、电脑。触屏操作优化，键盘快捷键支持（数字键出牌、空格摸牌、U 喊 UNO、K 抓 UNO）。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 第三屏：使用文档 ========== -->
+    <section class="slide-section" id="docs">
+      <div style="max-width: 1000px; width: 100%;">
+        <h2 class="section-title reveal">使用文档</h2>
+        <p class="section-desc reveal">从零开始，快速上手 UNO</p>
+
+        <div class="docs-layout">
+          <nav class="docs-nav reveal" id="docsNav">
+            <div class="docs-nav-item active" data-doc="quickstart">🚀 快速开始</div>
+            <div class="docs-nav-item" data-doc="rules">📜 游戏规则</div>
+            <div class="docs-nav-item" data-doc="modes">🎮 游戏模式</div>
+            <div class="docs-nav-item" data-doc="keyboard">⌨️ 快捷键</div>
+            <div class="docs-nav-item" data-doc="deploy">📦 部署指南</div>
+          </nav>
+
+          <div class="docs-content">
+            <div class="docs-pane active" id="doc-quickstart">
+              <h3>🚀 快速开始</h3>
+              <div class="docs-step">
+                <div class="docs-step-num">1</div>
+                <div class="docs-step-body">
+                  <h4>设置昵称与头像</h4>
+                  <p>首次打开页面会自动弹出设置窗口，输入昵称并选择一个头像即可开始。</p>
+                </div>
+              </div>
+              <div class="docs-step">
+                <div class="docs-step-num">2</div>
+                <div class="docs-step-body">
+                  <h4>选择游戏方式</h4>
+                  <p>首页提供三种入口：<strong>人机对决</strong>（本地对战）、<strong>创建房间</strong>（邀请好友）、<strong>大厅随机匹配</strong>（与陌生人匹配）。</p>
+                </div>
+              </div>
+              <div class="docs-step">
+                <div class="docs-step-num">3</div>
+                <div class="docs-step-body">
+                  <h4>开始对战</h4>
+                  <p>房主点击“开始游戏”，其他玩家等待。手牌中可出的牌会浮起发光，点击即可打出。</p>
+                </div>
+              </div>
+              <p>💡 <strong>提示：</strong>创建房间后，点击“复制邀请链接”或“分享”按钮，将房间号发送给好友即可加入。</p>
+            </div>
+
+            <div class="docs-pane" id="doc-rules">
+              <h3>📜 游戏规则</h3>
+              <p><strong>游戏目标：</strong>率先打光自己所有手牌的玩家获胜。</p>
+              <p><strong>牌面构成：</strong>标准 108 张牌，包括数字牌（0-9，四色）、功能牌（禁止 ⊘、反转 ⇄、+2）、万能牌（变色 ★、+4）。</p>
+              <p><strong>出牌规则：</strong>轮到你时，可以打出与弃牌堆顶牌颜色相同、数字相同或符号相同的牌。万能牌任何时候都可打出。</p>
+              <p><strong>特殊效果：</strong></p>
+              <p>• 禁止 ⊘：下家跳过回合<br>
+                 • 反转 ⇄：出牌方向颠倒<br>
+                 • +2：下家摸 2 张并跳过<br>
+                 • 变色 ★：出牌后指定接下来继续的颜色<br>
+                 • +4：指定颜色，下家摸 4 张并跳过</p>
+              <p><strong>UNO 规则：</strong>当你打出倒数第二张牌、只剩 1 张时，必须立即喊“UNO”。有 2 秒保护期，期间对手不能抓你。保护期过后若还没喊，对手可以“抓 UNO”，你罚摸 2 张。</p>
+            </div>
+
+            <div class="docs-pane" id="doc-modes">
+              <h3>🎮 游戏模式</h3>
+              <p><strong>单局制：</strong>一局定胜负，先出完手牌者获胜。</p>
+              <p><strong>累积 500 分：</strong>每局结束后，赢家按输家手牌分值计分（数字牌按面值、功能牌 20 分、万能牌 50 分），累积到 500 分宣布最终胜利。</p>
+              <p><strong>淘汰制：</strong>每局结束后，手牌分最高的存活玩家被淘汰进入观战，最后剩下的玩家获得最终胜利。</p>
+              <p><strong>村规开关：</strong>房主可在房规面板中开启以下规则：<br>
+                 • +2/+4 堆叠：允许同类牌叠加，罚抽累加<br>
+                 • 强制出牌：摸到能出的牌必须打出<br>
+                 • 7-0 规则：打出 7 可与指定玩家交换手牌；打出 0 全员按方向传递手牌<br>
+                 • +4 质疑：关闭后 +4 直接罚抽 4 张，不弹质疑窗</p>
+            </div>
+
+            <div class="docs-pane" id="doc-keyboard">
+              <h3>⌨️ 快捷键</h3>
+              <p>电脑端支持以下键盘快捷键，操作更高效：</p>
+              <div class="docs-step">
+                <div class="docs-step-num">1-9</div>
+                <div class="docs-step-body"><h4>出牌</h4><p>打出第 N 张手牌（牌面右上角有编号）</p></div>
+              </div>
+              <div class="docs-step">
+                <div class="docs-step-num">␣</div>
+                <div class="docs-step-body"><h4>摸牌</h4><p>从牌堆摸一张牌</p></div>
+              </div>
+              <div class="docs-step">
+                <div class="docs-step-num">↵</div>
+                <div class="docs-step-body"><h4>跳过回合</h4><p>摸牌后跳过出牌</p></div>
+              </div>
+              <div class="docs-step">
+                <div class="docs-step-num">U</div>
+                <div class="docs-step-body"><h4>喊 UNO</h4><p>剩 1 张牌时喊 UNO</p></div>
+              </div>
+              <div class="docs-step">
+                <div class="docs-step-num">K</div>
+                <div class="docs-step-body"><h4>抓 UNO</h4><p>抓忘记喊 UNO 的对手（需等保护期结束）</p></div>
+              </div>
+            </div>
+
+            <div class="docs-pane" id="doc-deploy">
+              <h3>📦 部署指南</h3>
+              <p>本项目为纯前端应用，无需后端服务器即可运行。部署非常简单：</p>
+              <p><strong>方式一：GitHub Pages（推荐）</strong><br>
+                 1. 将 index.html、style.css、app.js 三个文件上传到 GitHub 仓库<br>
+                 2. 进入仓库 Settings → Pages<br>
+                 3. Source 选择 main 分支，保存<br>
+                 4. 等待 1 分钟，获得 <code>https://你的用户名.github.io/仓库名/</code> 链接</p>
+              <p><strong>方式二：Netlify Drop</strong><br>
+                 将整个文件夹拖拽到 <code>app.netlify.com/drop</code> 即可获得临时域名。</p>
+              <p><strong>方式三：Vercel</strong><br>
+                 连接 GitHub 仓库，自动部署，支持自定义域名。</p>
+              <p>💡 <strong>提示：</strong>游戏依赖 PeerJS 信令服务器建立 P2P 连接。如 PeerJS 官方服务器在国内访问不稳定，可在设置中配置备用 Render 信令服务器地址。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 第四屏：关于 ========== -->
+    <section class="slide-section" id="about">
+      <div class="about-container">
+        <div class="about-logo reveal">
+          <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="4" y="4" width="40" height="40" rx="11" fill="rgba(255,255,255,.18)"/>
+            <ellipse cx="24" cy="24" rx="14" ry="9.5" fill="#ffffff"/>
+            <text x="24" y="28.5" text-anchor="middle"
+                  font-family="Arial Black, Helvetica, sans-serif"
+                  font-size="9.5" font-weight="900" font-style="italic"
+                  fill="#E63946" letter-spacing="0.3">UNO</text>
+          </svg>
+        </div>
+        <h2 class="section-title reveal">关于 UNO</h2>
+        <div class="about-version reveal">v0.5  Beta · WebRTC P2P 架构</div>
+
+        <div class="about-text reveal">
+          <p>UNO 是一款基于 WebRTC 点对点技术的开源卡牌游戏。它不依赖中心服务器，所有游戏数据直接在玩家浏览器之间传输，保证了低延迟和隐私安全。</p>
+          <p>项目采用纯前端技术栈：HTML + CSS + JavaScript，使用 PeerJS 作为信令服务器建立连接，Socket.IO 风格的通信协议管理游戏状态。支持人机对战、房间联机、随机匹配三种玩法，并内置了成就称号系统和完整的 UNO 规则引擎。</p>
+          <p>本项目仅供学习和娱乐使用，完全免费，无广告，无内购。代码开源，欢迎贡献。</p>
+        </div>
+
+        <div class="about-links reveal">
+          <a href="https://cjyj.top/uno/" target="_blank" rel="noopener" class="btn btn-primary">🚀 立即开始游戏</a>
+          <a href="mailto:Minecraft_tyds@outlook.com" class="btn btn-outline">✉️ 联系开发者</a>
+          <a href="#docs" class="btn btn-outline">📖 查看文档</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         底部版权栏
+         ============================================================ -->
+    <footer class="footer">
+      <div class="footer-inner">
+        <div class="footer-top">
+          <div class="footer-brand">
+            <a href="#hero" class="nav-logo">
+              <svg class="logo-svg" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <defs>
+                  <linearGradient id="logoGradFooter" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#E63946"/>
+                    <stop offset="33%" stop-color="#E6A800"/>
+                    <stop offset="66%" stop-color="#2A9D8F"/>
+                    <stop offset="100%" stop-color="#3A7BD5"/>
+                  </linearGradient>
+                </defs>
+                <rect x="4" y="4" width="40" height="40" rx="11" fill="url(#logoGradFooter)"/>
+                <ellipse cx="24" cy="24" rx="14" ry="9.5" fill="#ffffff"/>
+                <text x="24" y="28.5" text-anchor="middle"
+                      font-family="Arial Black, Helvetica, sans-serif"
+                      font-size="9.5" font-weight="900" font-style="italic"
+                      fill="#E63946" letter-spacing="0.3">UNO</text>
+              </svg>
+              <span>UNO</span>
+            </a>
+            <p>基于 WebRTC 的免费开源 UNO 游戏。无需服务器，打开即玩。</p>
+          </div>
+
+          <div class="footer-nav-group">
+            <h4>导航</h4>
+            <ul>
+              <li><a href="#hero">主页</a></li>
+              <li><a href="#features">功能特性</a></li>
+              <li><a href="#docs">使用文档</a></li>
+              <li><a href="#about">关于</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-nav-group">
+            <h4>相关链接</h4>
+            <ul>
+              <li><a href="https://cjyj.top/uno/" target="_blank" rel="noopener">游戏入口</a></li>
+              <li><a href="https://github.com/TYDS2013/uno" target="_blank" rel="noopener">GitHub 仓库</a></li>
+              <li><a href="https://peerjs.com" target="_blank" rel="noopener">PeerJS 官网</a></li>
+              <li><a href="https://corporate.mattel.com/brand-portfolio/uno" target="_blank" rel="noopener">UNO 原版官方</a></li>
+              <li><a href="mailto:Minecraft_tyds@outlook.com">联系开发者</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-nav-group">
+            <h4>资源</h4>
+            <ul>
+              <li><a href="#docs">使用文档</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="footer-bottom">
+          <!-- 免责声明区 -->
+          <div class="footer-disclaimer">
+            ⚠️ <strong>免责声明：</strong>本站为第三方开源项目，<strong>并非 UNO 官方站点，与 UNO 品牌方不存在任何关联、赞助或背书关系</strong>。
+            UNO 是 Mattel, Inc. 的注册商标，原版游戏的官方网站为
+            <a href="https://corporate.mattel.com/brand-portfolio/uno" target="_blank" rel="noopener">corporate.mattel.com</a>，
+            请以官方渠道发布的规则与商品信息为准。本站仅提供基于公开规则的非商业性娱乐游戏。
+          </div>
+
+          <div class="footer-legal">
+            <p>© 2026 UNO 开源项目 · 保留所有权利 · 由 TYDS2013 开发</p>
+            <p>Powered by WebRTC + PeerJS</p>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </main>
+
+  <!-- ============================================================
+       JavaScript
+       ============================================================ -->
+  <script>
+    (function() {
+      'use strict';
+
+      // ==========================================================
+      // 1. 主题切换
+      // ==========================================================
+      const themeToggle = document.getElementById('themeToggle');
+      const themeIcon = document.getElementById('themeIcon');
+
+      function setTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('uno_site_theme', theme);
+        themeIcon.textContent = theme === 'dark' ? '☀️' : '🌙';
+      }
+
+      function initTheme() {
+        const saved = localStorage.getItem('uno_site_theme');
+        if (saved) setTheme(saved);
+        else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) setTheme('dark');
+        else setTheme('light');
+      }
+
+      initTheme();
+
+      themeToggle.addEventListener('click', function() {
+        const current = document.documentElement.getAttribute('data-theme') || 'light';
+        setTheme(current === 'dark' ? 'light' : 'dark');
+      });
+
+      // ==========================================================
+      // 2. 移动端汉堡菜单
+      // ==========================================================
+      const hamburger = document.getElementById('hamburger');
+      const navLinks = document.getElementById('navLinks');
+
+      hamburger.addEventListener('click', function() {
+        navLinks.classList.toggle('open');
+      });
+
+      navLinks.querySelectorAll('a').forEach(function(link) {
+        link.addEventListener('click', function() {
+          navLinks.classList.remove('open');
+        });
+      });
+
+      // ==========================================================
+      // 3. 滚动监听 —— 高亮当前导航项
+      // ==========================================================
+      const sections = document.querySelectorAll('.slide-section');
+      const navItems = document.querySelectorAll('.nav-links a[data-nav]');
+
+      function updateActiveNav() {
+        const scrollPos = window.scrollY + window.innerHeight / 3;
+        let current = '';
+        sections.forEach(function(sec) {
+          if (sec.offsetTop <= scrollPos) {
+            current = sec.getAttribute('id');
+          }
+        });
+        navItems.forEach(function(item) {
+          item.classList.toggle('active', item.getAttribute('data-nav') === current);
+        });
+      }
+
+      const pageContainer = document.getElementById('pageContainer');
+      pageContainer.addEventListener('scroll', updateActiveNav, { passive: true });
+
+      // ==========================================================
+      // 4. 统计数字动画 —— 页面加载后立即触发
+      // ==========================================================
+      function animateNumber(el) {
+        if (el.dataset.animated) return;
+        el.dataset.animated = '1';
+        const target = parseInt(el.getAttribute('data-count'), 10) || 0;
+        const duration = 1400;
+        const start = performance.now();
+
+        function update(now) {
+          const elapsed = now - start;
+          const progress = Math.min(elapsed / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          const current = Math.round(eased * target);
+          el.textContent = current;
+          if (progress < 1) requestAnimationFrame(update);
+          else el.textContent = target;
+        }
+        requestAnimationFrame(update);
+      }
+
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          document.querySelectorAll('.stat-number[data-count]').forEach(animateNumber);
+        }, 400);
+      });
+
+      if (document.readyState === 'complete') {
+        setTimeout(function() {
+          document.querySelectorAll('.stat-number[data-count]').forEach(animateNumber);
+        }, 400);
+      }
+
+      // ==========================================================
+      // 5. 滚动出现动画
+      // ==========================================================
+      const revealElements = document.querySelectorAll('.reveal');
+      const revealObserver = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      }, {
+        root: pageContainer,
+        threshold: 0.15,
+        rootMargin: '0px 0px -50px 0px'
+      });
+
+      revealElements.forEach(function(el) {
+        revealObserver.observe(el);
+      });
+
+      // ==========================================================
+      // 6. 文档标签切换
+      // ==========================================================
+      const docsNavItems = document.querySelectorAll('.docs-nav-item');
+      const docsPanes = document.querySelectorAll('.docs-pane');
+
+      docsNavItems.forEach(function(item) {
+        item.addEventListener('click', function() {
+          const docId = item.getAttribute('data-doc');
+          docsNavItems.forEach(function(i) { i.classList.remove('active'); });
+          item.classList.add('active');
+          docsPanes.forEach(function(pane) {
+            pane.classList.toggle('active', pane.getAttribute('id') === 'doc-' + docId);
+          });
+        });
+      });
+
+      document.querySelectorAll('[data-doc-link]').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+          e.preventDefault();
+          const docId = link.getAttribute('data-doc-link');
+          document.getElementById('docs').scrollIntoView({ behavior: 'smooth' });
+          setTimeout(function() {
+            docsNavItems.forEach(function(item) {
+              item.classList.toggle('active', item.getAttribute('data-doc') === docId);
+            });
+            docsPanes.forEach(function(pane) {
+              pane.classList.toggle('active', pane.getAttribute('id') === 'doc-' + docId);
+            });
+          }, 600);
+        });
+      });
+
+      // ==========================================================
+      // 7. 键盘导航
+      // ==========================================================
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+          const activeDoc = document.querySelector('.docs-nav-item.active');
+          if (!activeDoc) return;
+          const items = Array.from(docsNavItems);
+          const idx = items.indexOf(activeDoc);
+          if (idx === -1) return;
+          let next;
+          if (e.key === 'ArrowRight') next = items[(idx + 1) % items.length];
+          else next = items[(idx - 1 + items.length) % items.length];
+          if (next) next.click();
+        }
+      });
+
+      // ==========================================================
+      // 8. 平滑滚动
+      // ==========================================================
+      document.querySelectorAll('a[href^="#"]').forEach(function(anchor) {
+        anchor.addEventListener('click', function(e) {
+          const targetId = this.getAttribute('href');
+          if (targetId === '#') return;
+          const targetEl = document.querySelector(targetId);
+          if (targetEl) {
+            e.preventDefault();
+            targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+      });
+
+    })();
+  </script>
+
+</body>
+</html>
