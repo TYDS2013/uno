@@ -7,13 +7,79 @@
   const UNO_GRACE_MS = 2000;
   const MAX_PLAYERS = 10;
 
-  // AI 英文名池
   const AI_NAME_POOL = [
     'Alice','Bob','Carol','David','Emma','Frank','Grace','Henry','Ivy','Jack',
     'Kate','Liam','Mia','Noah','Olivia','Peter','Quinn','Rose','Sam','Tina',
     'Uma','Victor','Wendy','Xavier','Yara','Zack','Alex','Bella','Chris','Diana'
   ];
   const AI_AVATARS = ['🤖','👾','🦾','🐯','🦊','🐼','🐲','🦄','🐙','👻'];
+
+  /* ============ 成就系统 ============ */
+  // 称号基于累计数据自动计算
+  const TITLES = [
+    { id: 'newbie',      label: '🐣 新手玩家',       desc: '刚入门',         check: s => true },
+    { id: 'first_win',   label: '🥇 首胜',           desc: '赢得 1 局',      check: s => s.wins >= 1 },
+    { id: 'streak3',     label: '🔥 三连胜',         desc: '连续赢 3 局',    check: s => s.bestStreak >= 3 },
+    { id: 'streak5',     label: '⚡ 五连胜',         desc: '连续赢 5 局',    check: s => s.bestStreak >= 5 },
+    { id: 'win10',       label: '👑 常胜将军',       desc: '累计赢 10 局',   check: s => s.wins >= 10 },
+    { id: 'win25',       label: '🏆 王者',           desc: '累计赢 25 局',   check: s => s.wins >= 25 },
+    { id: 'uno20',       label: '📢 UNO 达人',       desc: '喊 UNO 20 次',   check: s => s.unoCalls >= 20 },
+    { id: 'wild4_50',    label: '💥 加四大师',       desc: '打出 50 张 +4',  check: s => s.wild4Played >= 50 },
+    { id: 'penalty6',    label: '😭 超级倒霉蛋',     desc: '被罚摸 6 张',    check: s => s.penalty6 >= 1 },
+    { id: 'penalty6x5',  label: '💀 天选倒霉蛋',     desc: '被罚摸 6 张 5 次', check: s => s.penalty6 >= 5 },
+    { id: 'forgot5',     label: '🤦 健忘症',         desc: '忘喊 UNO 被抓 5 次', check: s => s.caught >= 5 },
+    { id: 'forgot20',    label: '🐟 金鱼记忆',       desc: '忘喊 UNO 被抓 20 次', check: s => s.caught >= 20 },
+    { id: 'draw2_30',    label: '🌪 +2 风暴',        desc: '打出 30 张 +2',  check: s => s.draw2Played >= 30 }
+  ];
+
+  function getStats() {
+    try {
+      const raw = localStorage.getItem('uno_stats');
+      if (raw) {
+        const s = JSON.parse(raw);
+        return Object.assign({
+          wins: 0, streak: 0, bestStreak: 0, unoCalls: 0,
+          wild4Played: 0, draw2Played: 0, penalty6: 0, caught: 0
+        }, s);
+      }
+    } catch (e) {}
+    return { wins: 0, streak: 0, bestStreak: 0, unoCalls: 0, wild4Played: 0, draw2Played: 0, penalty6: 0, caught: 0 };
+  }
+  function saveStats(s) {
+    try { localStorage.setItem('uno_stats', JSON.stringify(s)); } catch (e) {}
+  }
+  function computeTitle(s) {
+    // 从后往前找第一个满足条件的
+    for (let i = TITLES.length - 1; i >= 0; i--) {
+      if (TITLES[i].check(s)) return TITLES[i];
+    }
+    return TITLES[0];
+  }
+  function getTitle() {
+    return computeTitle(getStats()).label;
+  }
+  // 记录成就事件
+  function recordEvent(type, value) {
+    const s = getStats();
+    if (type === 'win') {
+      s.wins += 1;
+      s.streak += 1;
+      if (s.streak > s.bestStreak) s.bestStreak = s.streak;
+    } else if (type === 'lose') {
+      s.streak = 0;
+    } else if (type === 'unoCall') {
+      s.unoCalls += 1;
+    } else if (type === 'wild4') {
+      s.wild4Played += 1;
+    } else if (type === 'draw2') {
+      s.draw2Played += 1;
+    } else if (type === 'penalty6') {
+      s.penalty6 += 1;
+    } else if (type === 'caught') {
+      s.caught += 1;
+    }
+    saveStats(s);
+  }
 
   function $(id) { return document.getElementById(id); }
   function esc(s) {
@@ -39,12 +105,20 @@
       topBar.classList.remove('show');
       $('guideBtn').classList.remove('show');
     }
+    if (name === 'settings') {
+      // 进入设置页时刷新头像和称号
+      renderAvatarPickers();
+      refreshTitleBadge();
+    }
+  }
+  function refreshTitleBadge() {
+    const el = $('titleBadge');
+    if (!el) return;
+    const t = computeTitle(getStats());
+    el.textContent = t.label;
   }
   function getName() {
     return (localStorage.getItem('uno_name') || '玩家').slice(0, 8);
-  }
-  function getTitle() {
-    return localStorage.getItem('uno_title') || '新手玩家';
   }
   function getAvatar() {
     return localStorage.getItem('uno_avatar') || '😀';
@@ -52,6 +126,10 @@
   function updateAccountChip() {
     $('homeAvatar').textContent = getAvatar();
     $('homeName').textContent = getName();
+    // 同时更新设置页的名称显示
+    const si = $('settingsNameInput');
+    if (si) si.value = getName();
+    refreshTitleBadge();
   }
   function showLoading(text, subtext) {
     $('loadingText').innerHTML = esc(text || '正在连接…') +
@@ -92,7 +170,6 @@
     return (localStorage.getItem('uno_vercel_host') || DEFAULT_VERCEL_HOST).trim();
   }
 
-  // ✅ 信令服务器不再显示"官方"
   const SERVERS = {
     peerjs: {
       id: 'peerjs', label: '服务器 A', prefix: 'P',
@@ -360,6 +437,9 @@
         });
         player.score = (player.score || 0) + total;
       }
+      // 成就：只有自己赢才记录
+      if (player.id === myId()) recordEvent('win');
+      else recordEvent('lose');
       pushSystemMessage('🏆 ' + player.name + ' 获胜！', 1);
       broadcastState();
       return true;
@@ -453,8 +533,8 @@
     else if (card.type !== 'number' && card.type === top.type) playable = true;
     if (!playable) return;
 
-    // ✅ 修复：保存出牌前的颜色，用于 +4 质疑判定
-    const prevColor = top.color;
+    // ✅ 修复：使用生效中的 currentColor 作为"出 +4 前需要匹配的颜色"
+    const prevColor = room.currentColor;
 
     player.hand.splice(cardIndex, 1);
     room.discard.push(room.topCard);
@@ -466,6 +546,10 @@
     } else {
       player.unoGraceUntil = 0;
     }
+    // 成就：+4 计数
+    if (card.type === 'wild4' && player.id === myId()) recordEvent('wild4');
+    if (card.type === 'draw2' && player.id === myId()) recordEvent('draw2');
+
     let skipNext = false;
     if (room.rules.sevenZero && card.type === 'number' && (card.value === 7 || card.value === 0)) {
       if (card.value === 7) {
@@ -513,7 +597,7 @@
     else if (card.type === 'wild4') {
       const ni4 = nextAliveIdx(1);
       const v4 = room.players[ni4];
-      // ✅ 用出牌前的颜色判定是否违规
+      // ✅ 用出牌前的 currentColor 判定是否有同色牌
       const offenderHadColor = hasColor(player, prevColor);
       if (room.rules.challenge === false) {
         drawCards(v4, 4); skipNext = true;
@@ -522,7 +606,8 @@
       } else {
         room.pendingChallenge = {
           victimId: v4.id, offenderId: peerId, color: card.color,
-          offenderHadColor: offenderHadColor
+          offenderHadColor: offenderHadColor,
+          matchColor: prevColor
         };
         room.message = player.name + ' 对 ' + v4.name + ' 打出 +4，等待选择…';
         if (checkWin(player)) return;
@@ -598,6 +683,7 @@
     player.unoCalled = true;
     player.unoGraceUntil = 0;
     room.message = player.name + ' 喊了 UNO！';
+    if (player.id === myId()) recordEvent('unoCall');
     broadcastState();
   }
 
@@ -619,6 +705,8 @@
     target.unoCalled = false;
     room.message = target.name + ' 忘记喊 UNO，被 ' + catcher.name + ' 抓到';
     pushSystemMessage('⚠ ' + target.name + ' 被 ' + catcher.name + ' 抓到，罚摸 2 张', 1);
+    // 成就：自己被抓好
+    if (target.id === myId()) recordEvent('caught');
     broadcastState();
   }
 
@@ -630,18 +718,21 @@
     const victim = findPlayer(room.pendingChallenge.victimId);
     if (!offender || !victim) return;
     const illegal = room.pendingChallenge.offenderHadColor;
+    const matchColor = room.pendingChallenge.matchColor || '?';
     if (illegal) {
       drawCards(offender, 4);
       room.message = offender.name + ' 违规 +4，被质疑成功';
-      pushSystemMessage('⚠ ' + victim.name + ' 质疑成功，' + offender.name + ' 罚抽 4 张', 1);
+      pushSystemMessage('⚠ ' + victim.name + ' 质疑成功：' + offender.name + ' 手上有 ' + matchColor + ' 色牌，罚抽 4 张', 1);
       room.pendingChallenge = null;
       room.pendingDraw = 0; room.pendingType = null;
       nextTurn(1);
     } else {
       drawCards(victim, 6);
       room.message = victim.name + ' 质疑失败';
-      pushSystemMessage('⚠ ' + victim.name + ' 质疑失败，罚抽 6 张', 1);
+      pushSystemMessage('⚠ ' + victim.name + ' 质疑失败（对方确实没有 ' + matchColor + ' 色牌），罚抽 6 张', 1);
       room.pendingChallenge = null;
+      // 成就：自己被罚 6 张
+      if (victim.id === myId()) recordEvent('penalty6');
       nextTurn(2);
     }
     broadcastState();
@@ -922,6 +1013,7 @@
     $('reconnectOverlay').classList.remove('show');
     hideReconnectButton();
     switchScreen('home');
+    updateAccountChip();
   }
 
   function removePlayer(peerId) {
@@ -1204,7 +1296,6 @@
     });
   }
 
-  /* ============ 人机对战 ============ */
   function pickAINames(count) {
     const pool = AI_NAME_POOL.slice();
     for (let i = pool.length - 1; i > 0; i--) {
@@ -1379,7 +1470,6 @@
     }, 1200 + Math.random() * 800);
   }
 
-  /* ============ 随机匹配 ============ */
   function startMatchmaking(serverId) {
     showLoading('正在加入大厅…', SERVERS[serverId].label + ' 大厅');
     const lobbyId = (serverId === 'peerjs' ? 'P' : 'R') + 'LOBBY';
@@ -1532,7 +1622,6 @@
     }
   }
 
-  /* ============ UI 渲染 ============ */
   function applyState(newState) {
     hideLoading();
     $('reconnectOverlay').classList.remove('show');
@@ -1647,7 +1736,15 @@
     let hasCatchable = false;
     const now0 = Date.now();
     const others = S.players.filter(p => !p.isYou);
-    $('opponents').innerHTML = others.length ? others.map(p => {
+    // 按出牌顺序重排：从下家开始，到上家结束
+    const orderedOthers = [];
+    const total = S.players.length;
+    const myIdx = S.players.findIndex(p => p.id === myId());
+    for (let k = 1; k < total; k++) {
+      const idx = (myIdx + k) % total;
+      orderedOthers.push(S.players[idx]);
+    }
+    $('opponents').innerHTML = orderedOthers.map(p => {
       let graceHtml = '';
       if (p.cardCount === 1 && !p.unoCalled && p.alive !== false) {
         const graceLeft = (p.unoGraceUntil || 0) - now0;
@@ -1661,10 +1758,10 @@
         '<div class="opp-name">' + esc(p.name) + '</div>' +
         graceHtml + scoreHtml + specHtml +
         '</div>';
-    }).join('') : '';
+    }).join('');
 
-    // 布局
-    setTimeout(layoutCircle, 0);
+    // 布局（异步执行，避免阻塞渲染）
+    requestAnimationFrame(layoutCircle);
 
     const top = S.topCard;
     const newTopId = top ? top.id : null;
@@ -1775,22 +1872,23 @@
     if (S.phase === 'playing') scheduleUnoRefresh();
   }
 
-  // ✅ 按出牌顺序把对手排成环形
+  // ✅ 修复：布局相对 #game，不受牌堆影响
   function layoutCircle() {
-    const arena = $('circleArena');
-    if (!arena) return;
-    const opps = arena.querySelectorAll('.opp');
+    const opps = document.querySelectorAll('#opponents .opp');
     const M = opps.length;
     if (M === 0) return;
-
-    const rect = arena.getBoundingClientRect();
-    const cx = rect.width / 2;
-    const cy = rect.height / 2;
-    const availW = rect.width - 40;
-    const availH = rect.height - 40;
+    const game = $('game');
+    if (!game) return;
+    const gameRect = game.getBoundingClientRect();
+    // 顶部和底部的保留区（顶部已有 exit/guide 按钮；底部是手牌区）
+    const topPad = 60;
+    const bottomPad = 220;
+    const availH = gameRect.height - topPad - bottomPad;
+    const cx = gameRect.width / 2;
+    const cy = topPad + availH / 2;
+    const availW = gameRect.width - 40;
     const R = Math.min(availW, availH) * 0.42;
 
-    // 角度从 180°（正左）经过 270°（正上）到 360°（正右）
     opps.forEach((el, idx) => {
       let angle;
       if (M === 1) angle = 270;
@@ -1800,7 +1898,6 @@
       const y = cy + R * Math.sin(rad);
       el.style.left = x + 'px';
       el.style.top = y + 'px';
-      el.style.transform = 'translate(-50%, -50%)';
     });
   }
 
@@ -1860,7 +1957,8 @@
       const newOnes = msgs.slice(state.lastChatLen);
       newOnes.forEach(m => {
         if (m.sender !== 'system' && m.sender !== state.myPlayerId) showChatPopup(m, { judge: false });
-        else if (m.sender === 'system' && m.level === 1) showChatPopup({ senderName: '⚖️ 裁决', text: m.text }, { judge: true });
+        // ✅ 修复：'⚖️ 裁决' → '📡 服务器'
+        else if (m.sender === 'system' && m.level === 1) showChatPopup({ senderName: '📡 服务器', text: m.text }, { judge: true });
       });
       if ($('chatPanel').classList.contains('open')) {
         setTimeout(() => { el.scrollTop = el.scrollHeight; }, 0);
@@ -1917,7 +2015,6 @@
     setTimeout(() => { $('chatMessages').scrollTop = $('chatMessages').scrollHeight; }, 320);
   }
 
-  /* ============ 设置 ============ */
   let globalFontScale = parseFloat(localStorage.getItem('uno_font_scale') || '100') / 100;
   function applyFontScale() {
     document.documentElement.style.setProperty('--fs', globalFontScale);
@@ -1967,17 +2064,11 @@
   function initSettings() {
     applyFontScale();
     const nameInput = $('settingsNameInput');
-    const titleInput = $('settingsTitleInput');
     nameInput.value = getName();
-    titleInput.value = getTitle();
     nameInput.addEventListener('change', function () {
       const v = this.value.trim().slice(0, 8) || '玩家';
       localStorage.setItem('uno_name', v);
       updateAccountChip();
-    });
-    titleInput.addEventListener('change', function () {
-      const v = this.value.trim().slice(0, 12);
-      localStorage.setItem('uno_title', v);
     });
 
     const vercelHostInput = $('vercelHostInput');
@@ -2011,7 +2102,6 @@
       applyFontScale();
     });
 
-    // 设置导航切换
     document.querySelectorAll('.settings-nav-item').forEach(item => {
       item.addEventListener('click', () => {
         const tab = item.dataset.tab;
@@ -2082,7 +2172,6 @@
     });
   }
 
-  /* ============ 聊天 ============ */
   let typingSendTimer = null;
   let lastTypingSent = 0;
   function bindChatEvents() {
@@ -2206,9 +2295,7 @@
     } catch (e) {}
   }
 
-  /* ============ 主入口 ============ */
   function init() {
-    // 账户系统
     const hasAccount = !!localStorage.getItem('uno_name');
     if (!hasAccount) {
       state.setupAvatar = '😀';
@@ -2218,9 +2305,6 @@
         const v = $('setupNameInput').value.trim().slice(0, 8) || '玩家';
         localStorage.setItem('uno_name', v);
         localStorage.setItem('uno_avatar', state.setupAvatar || '😀');
-        if (!localStorage.getItem('uno_title')) {
-          localStorage.setItem('uno_title', '新手玩家');
-        }
         $('setupModal').classList.remove('show');
         updateAccountChip();
       });
@@ -2229,13 +2313,9 @@
       });
     }
 
-    // URL 邀请
     const urlRoom = getRoomIdFromURL();
-    if (urlRoom) {
-      $('roomInput').value = urlRoom;
-    }
+    if (urlRoom) $('roomInput').value = urlRoom;
 
-    // 会话恢复
     try {
       const saved = sessionStorage.getItem('uno_host_room');
       if (saved && !urlRoom) {
@@ -2255,19 +2335,15 @@
 
     updateAccountChip();
     initSettings();
+    renderAvatarPickers();
     bindAvatarPickers();
     bindChatEvents();
     setupKeyboard();
     setupVisibilityHandling();
     bindRulesEvents();
 
-    // 账户按钮
-    $('accountChip').addEventListener('click', () => {
-      initAudio();
-      switchScreen('settings');
-    });
+    $('accountChip').addEventListener('click', () => { initAudio(); switchScreen('settings'); });
 
-    // 首页
     $('createBtn').addEventListener('click', () => { initAudio(); createRoom(); });
     $('joinBtn').addEventListener('click', () => {
       initAudio();
@@ -2277,12 +2353,9 @@
     });
     $('roomInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('joinBtn').click(); });
 
-    // 人机
     $('aiGameBtn').addEventListener('click', () => {
       initAudio();
-      if (!localStorage.getItem('uno_name')) {
-        toast('请先设置昵称'); return;
-      }
+      if (!localStorage.getItem('uno_name')) { toast('请先设置昵称'); return; }
       $('aiConfigPanel').classList.add('show');
     });
     $('aiCancelBtn').addEventListener('click', () => $('aiConfigPanel').classList.remove('show'));
@@ -2313,7 +2386,6 @@
       startAIGame(count, diff);
     });
 
-    // 匹配
     $('matchPeerBtn').addEventListener('click', () => {
       initAudio();
       if (!localStorage.getItem('uno_name')) { toast('请先设置昵称'); return; }
@@ -2325,7 +2397,6 @@
       startMatchmaking('vercel');
     });
 
-    // 房间
     $('copyRoomBtn').addEventListener('click', () => { initAudio(); copyInviteLink(); });
     $('shareBtn').addEventListener('click', () => { initAudio(); shareRoom(); });
     $('reconnectBtn').addEventListener('click', () => { initAudio(); manualReconnect(); });

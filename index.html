@@ -65,20 +65,23 @@
       <div class="settings-content">
         <!-- 账户 -->
         <div class="settings-pane active" data-pane="account">
-          <h3>账户</h3>
-          <div class="setting-item">
-            <label>昵称</label>
-            <input id="settingsNameInput" placeholder="输入昵称" maxlength="8" autocomplete="off">
-          </div>
-          <div class="setting-item">
-            <label>称号</label>
-            <input id="settingsTitleInput" placeholder="例如：新手玩家" maxlength="12" autocomplete="off">
-          </div>
-          <div class="setting-item">
-            <label>头像</label>
-            <div class="avatar-picker-inline" id="avatarPickerSettings"></div>
-          </div>
-        </div>
+  <h3>账户</h3>
+  <div class="setting-item">
+    <label>昵称</label>
+    <input id="settingsNameInput" placeholder="输入昵称" maxlength="8" autocomplete="off">
+  </div>
+  <div class="setting-item">
+    <label>当前称号（自动获得）</label>
+    <div class="title-badge" id="titleBadge">🏅 新手玩家</div>
+    <div class="setting-hint">
+      称号会根据你的游戏成就自动更新，比如连胜、被罚抽、使用 +4 次数等。
+    </div>
+  </div>
+  <div class="setting-item">
+    <label>头像</label>
+    <div class="avatar-picker-inline" id="avatarPickerSettings"></div>
+  </div>
+</div>
 
         <!-- 基本设置 -->
         <div class="settings-pane" data-pane="basic">
@@ -147,9 +150,9 @@
   </section>
 
   <!-- ================= 游戏 ================= -->
-  <section id="game" class="screen">
+ <section id="game" class="screen">
+    <div id="opponents"></div>
     <div id="circleArena">
-      <div id="opponents"></div>
       <div id="table">
         <div id="deckWrap" class="deck-wrap">
           <div id="deck" class="card back"><span class="deck-inner-label">UNO</span></div>
@@ -166,8 +169,7 @@
     </div>
     <button id="passBtn">跳过回合</button>
     <div id="myHand"></div>
-  </section>
-</div>
+</section>
 
 <!-- 顶部悬浮按钮 -->
 <div id="topBarLeft">
