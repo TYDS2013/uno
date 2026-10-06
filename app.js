@@ -7,11 +7,11 @@
   const UNO_GRACE_MS = 2000;
   const MAX_PLAYERS = 10;
 
-  // AI 随机名称池
+  // AI 英文名池
   const AI_NAME_POOL = [
-    '小明','阿飞','夜猫','大壮','闪电','小鹿','月影','孤狼','星尘','黑羽',
-    '土豆','菜鸟','咖啡','雪糕','狼牙','疾风','铁蛋','阿呆','火箭','云雀',
-    '虎子','小乔','东风','白露','沙暴','惊雷','霜雪','流火','明月','青松'
+    'Alice','Bob','Carol','David','Emma','Frank','Grace','Henry','Ivy','Jack',
+    'Kate','Liam','Mia','Noah','Olivia','Peter','Quinn','Rose','Sam','Tina',
+    'Uma','Victor','Wendy','Xavier','Yara','Zack','Alex','Bella','Chris','Diana'
   ];
   const AI_AVATARS = ['🤖','👾','🦾','🐯','🦊','🐼','🐲','🦄','🐙','👻'];
 
@@ -41,12 +41,17 @@
     }
   }
   function getName() {
-    const n = ($('nameInput').value.trim() || '玩家').slice(0, 8);
-    localStorage.setItem('uno_name', n);
-    return n;
+    return (localStorage.getItem('uno_name') || '玩家').slice(0, 8);
+  }
+  function getTitle() {
+    return localStorage.getItem('uno_title') || '新手玩家';
   }
   function getAvatar() {
     return localStorage.getItem('uno_avatar') || '😀';
+  }
+  function updateAccountChip() {
+    $('homeAvatar').textContent = getAvatar();
+    $('homeName').textContent = getName();
   }
   function showLoading(text, subtext) {
     $('loadingText').innerHTML = esc(text || '正在连接…') +
@@ -56,8 +61,7 @@
   function hideLoading() { $('loadingOverlay').classList.remove('show'); }
 
   function buildInviteLink(roomId) {
-    const base = location.origin + location.pathname;
-    return base + '?room=' + encodeURIComponent(roomId);
+    return location.origin + location.pathname + '?room=' + encodeURIComponent(roomId);
   }
   function getRoomIdFromURL() {
     try {
@@ -88,13 +92,14 @@
     return (localStorage.getItem('uno_vercel_host') || DEFAULT_VERCEL_HOST).trim();
   }
 
+  // ✅ 信令服务器不再显示"官方"
   const SERVERS = {
     peerjs: {
-      id: 'peerjs', label: 'PeerJS 官方', prefix: 'P',
+      id: 'peerjs', label: '服务器 A', prefix: 'P',
       buildOptions: () => ({ debug: 0, config: TURN_CONFIG })
     },
     vercel: {
-      id: 'vercel', label: 'Render 备用', prefix: 'R',  // ✅ 改为 R
+      id: 'vercel', label: '服务器 B', prefix: 'R',
       buildOptions: () => {
         const host = getVercelHost();
         if (!host) return null;
@@ -114,14 +119,12 @@
     try { return { peer: new Peer(peerId, opts) }; }
     catch (e) { return { error: e }; }
   }
-
   function genRoomId(serverId) {
     const prefix = SERVERS[serverId].prefix;
     let digits = '';
     for (let i = 0; i < 4; i++) digits += Math.floor(Math.random() * 10);
     return prefix + digits;
   }
-
   function parseRoomId(input) {
     const str = String(input || '').trim().toUpperCase();
     if (!str) return null;
@@ -135,7 +138,7 @@
     hostConn: null, clientConns: {}, room: null, S: null, currentRoomId: '',
     pendingWild: null, unreadCount: 0, lastChatLen: -1, chatInitialized: false,
     usedServer: 'peerjs', lastDiscardId: null, hiddenAt: null, reconnecting: false,
-    isMatchmaking: false
+    isMatchmaking: false, setupAvatar: '😀'
   };
 
   let audioCtx = null;
@@ -157,10 +160,8 @@
       if (finalVol < 0.0001) finalVol = 0.0001;
       gain.gain.setValueAtTime(finalVol, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + dur);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(); osc.stop(audioCtx.currentTime + dur);
     } catch (e) {}
   }
   const sfxClick = () => playTone(600, 0.06, 'square', 0.06);
@@ -170,8 +171,6 @@
   const sfxWin   = () => [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => playTone(f, 0.2, 'sine', 0.12), i * 120));
   const sfxLose  = () => [440, 330, 220].forEach((f, i) => setTimeout(() => playTone(f, 0.25, 'sawtooth', 0.1), i * 150));
 
-  /* ============ 5. 牌组 ============ */
-  // 标准 UNO：108 张
   function makeDeck() {
     const colors = ['red', 'yellow', 'green', 'blue'];
     const deck = [];
@@ -193,7 +192,6 @@
     }
     return deck;
   }
-  // Fisher-Yates 洗牌，保证 108 张随机且不重复
   function shuffle(arr) {
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -307,7 +305,6 @@
   function startGame() {
     const room = state.room;
     if (!room) return;
-    // 完整 108 张牌，Fisher-Yates 打乱
     room.deck = shuffle(makeDeck());
     room.discard = [];
     room.players.forEach(p => {
@@ -369,7 +366,6 @@
     }
     return false;
   }
-
   function handleEliminationRound(winner) {
     const room = state.room;
     room.winnerId = winner.id;
@@ -387,7 +383,7 @@
       eliminated.hand = [];
       room.eliminatedId = eliminated.id;
       room.eliminatedName = eliminated.name;
-      pushSystemMessage('💀 ' + eliminated.name + ' 被淘汰，进入观战', 1);
+      pushSystemMessage('💀 ' + eliminated.name + ' 被淘汰', 1);
     }
     const alive = alivePlayers();
     if (alive.length <= 1) { finalizeElimination(alive[0] || winner); return; }
@@ -404,8 +400,6 @@
     pushSystemMessage('🏆 ' + winner.name + ' 获得最终胜利！', 1);
     broadcastState();
   }
-
-  // 抽卡：从牌堆顶部抽。牌堆空了才把弃牌堆洗回来
   function drawCards(player, count) {
     const room = state.room;
     for (let i = 0; i < count; i++) {
@@ -419,7 +413,6 @@
       player.hand.push(room.deck.shift());
     }
   }
-
   function nextTurn(step) {
     const room = state.room;
     const alive = alivePlayers();
@@ -445,16 +438,13 @@
     if (!player || player.alive === false) return;
     if (room.players[room.turnIndex].id !== peerId) return;
     if (room.drawnCardId !== null && room.drawnCardId !== cardId) return;
-
     const cardIndex = player.hand.findIndex(c => c.id === cardId);
     if (cardIndex === -1) return;
     const card = player.hand[cardIndex];
-
     if (room.rules.stacking && room.pendingDraw > 0) {
       if (room.pendingType === '+2' && card.type !== 'draw2') return;
       if (room.pendingType === '+4' && card.type !== 'wild4') return;
     }
-
     const top = room.topCard;
     let playable = false;
     if (card.color === 'wild') playable = true;
@@ -463,20 +453,20 @@
     else if (card.type !== 'number' && card.type === top.type) playable = true;
     if (!playable) return;
 
+    // ✅ 修复：保存出牌前的颜色，用于 +4 质疑判定
+    const prevColor = top.color;
+
     player.hand.splice(cardIndex, 1);
     room.discard.push(room.topCard);
     room.topCard = card;
     room.drawnCardId = null;
     room.currentColor = card.color === 'wild' ? (color || 'red') : card.color;
-
     if (player.hand.length === 1 && !player.unoCalled) {
       player.unoGraceUntil = Date.now() + UNO_GRACE_MS;
     } else {
       player.unoGraceUntil = 0;
     }
-
     let skipNext = false;
-
     if (room.rules.sevenZero && card.type === 'number' && (card.value === 7 || card.value === 0)) {
       if (card.value === 7) {
         room.pendingSwap = { from: peerId, value: 7 };
@@ -495,7 +485,6 @@
         pushSystemMessage('🔄 ' + player.name + ' 打出 0，全员交换手牌', 1);
       }
     }
-
     if (room.rules.stacking && (card.type === 'draw2' || card.type === 'wild4')) {
       room.pendingDraw = (room.pendingDraw || 0) + (card.type === 'draw2' ? 2 : 4);
       room.pendingType = card.type === 'draw2' ? '+2' : '+4';
@@ -505,7 +494,6 @@
       broadcastState();
       return;
     }
-
     if (card.type === 'skip') {
       skipNext = true;
       const victim = room.players[nextAliveIdx(1)];
@@ -519,17 +507,18 @@
       const ni = nextAliveIdx(1);
       const v = room.players[ni];
       drawCards(v, 2); skipNext = true;
-      room.message = player.name + ' 对 ' + v.name + ' 打出 +2，' + v.name + ' 摸 2 张';
-      pushSystemMessage('➕ ' + player.name + ' 对 ' + v.name + ' 打出 +2，' + v.name + ' 罚摸 2 张', 1);
+      room.message = player.name + ' 对 ' + v.name + ' 打出 +2';
+      pushSystemMessage('➕ ' + player.name + ' 对 ' + v.name + ' 打出 +2', 1);
     }
     else if (card.type === 'wild4') {
       const ni4 = nextAliveIdx(1);
       const v4 = room.players[ni4];
-      const offenderHadColor = hasColor(player, room.topCard.color);
+      // ✅ 用出牌前的颜色判定是否违规
+      const offenderHadColor = hasColor(player, prevColor);
       if (room.rules.challenge === false) {
         drawCards(v4, 4); skipNext = true;
-        room.message = player.name + ' 对 ' + v4.name + ' 打出 +4，' + v4.name + ' 摸 4 张';
-        pushSystemMessage('➕ ' + player.name + ' 对 ' + v4.name + ' 打出 +4，' + v4.name + ' 罚摸 4 张', 1);
+        room.message = player.name + ' 对 ' + v4.name + ' 打出 +4';
+        pushSystemMessage('➕ ' + player.name + ' 对 ' + v4.name + ' 打出 +4', 1);
       } else {
         room.pendingChallenge = {
           victimId: v4.id, offenderId: peerId, color: card.color,
@@ -543,7 +532,6 @@
       }
     }
     else room.message = player.name + ' 出牌';
-
     if (checkWin(player)) return;
     nextTurn(skipNext ? 2 : 1);
     broadcastState();
@@ -556,14 +544,11 @@
     if (!player || player.alive === false) return;
     if (room.players[room.turnIndex].id !== peerId) return;
     if (room.drawnCardId !== null && room.pendingDraw === 0) return;
-
     if (room.rules.stacking && room.pendingDraw > 0) {
       drawCards(player, room.pendingDraw);
       room.message = player.name + ' 摸了 ' + room.pendingDraw + ' 张牌';
-      room.pendingDraw = 0;
-      room.pendingType = null;
-      nextTurn(1);
-      broadcastState();
+      room.pendingDraw = 0; room.pendingType = null;
+      nextTurn(1); broadcastState();
       return;
     }
     if (room.drawnCardId !== null) return;
@@ -602,8 +587,7 @@
     if (room.drawnCardId === null) return;
     if (room.rules.forcePlay) { toast('摸到的牌可出，不能跳过'); return; }
     room.message = player.name + ' 跳过回合';
-    nextTurn(1);
-    broadcastState();
+    nextTurn(1); broadcastState();
   }
 
   function handleCallUno(peerId) {
@@ -627,14 +611,14 @@
     if (target.unoCalled) { room.message = target.name + ' 已经喊过 UNO 了！'; broadcastState(); return; }
     if (target.unoGraceUntil && target.unoGraceUntil + 150 > Date.now()) {
       const leftSec = Math.max(0, (target.unoGraceUntil - Date.now()) / 1000).toFixed(1);
-      room.message = target.name + ' 还在保护期内（剩 ' + leftSec + 's），不能抓！';
+      room.message = target.name + ' 还在保护期内（剩 ' + leftSec + 's）';
       broadcastState();
       return;
     }
     drawCards(target, 2);
     target.unoCalled = false;
-    room.message = target.name + ' 忘记喊 UNO，被 ' + catcher.name + ' 抓到，摸 2 张牌！';
-    pushSystemMessage('⚠ ' + target.name + ' 忘记喊 UNO，被 ' + catcher.name + ' 抓到，罚摸 2 张', 1);
+    room.message = target.name + ' 忘记喊 UNO，被 ' + catcher.name + ' 抓到';
+    pushSystemMessage('⚠ ' + target.name + ' 被 ' + catcher.name + ' 抓到，罚摸 2 张', 1);
     broadcastState();
   }
 
@@ -648,15 +632,14 @@
     const illegal = room.pendingChallenge.offenderHadColor;
     if (illegal) {
       drawCards(offender, 4);
-      room.message = offender.name + ' 违规 +4，被质疑成功，罚抽 4 张！';
+      room.message = offender.name + ' 违规 +4，被质疑成功';
       pushSystemMessage('⚠ ' + victim.name + ' 质疑成功，' + offender.name + ' 罚抽 4 张', 1);
       room.pendingChallenge = null;
-      room.pendingDraw = 0;
-      room.pendingType = null;
+      room.pendingDraw = 0; room.pendingType = null;
       nextTurn(1);
     } else {
       drawCards(victim, 6);
-      room.message = victim.name + ' 质疑失败，罚抽 6 张！';
+      room.message = victim.name + ' 质疑失败';
       pushSystemMessage('⚠ ' + victim.name + ' 质疑失败，罚抽 6 张', 1);
       room.pendingChallenge = null;
       nextTurn(2);
@@ -674,8 +657,7 @@
     room.message = victim.name + ' 摸了 4 张牌';
     pushSystemMessage('➕ ' + victim.name + ' 选择摸 4 张牌', 1);
     room.pendingChallenge = null;
-    room.pendingDraw = 0;
-    room.pendingType = null;
+    room.pendingDraw = 0; room.pendingType = null;
     nextTurn(2);
     broadcastState();
   }
@@ -687,13 +669,11 @@
     const from = findPlayer(peerId), to = findPlayer(targetId);
     if (!from || !to || from.id === to.id) return;
     const tmp = from.hand;
-    from.hand = to.hand;
-    to.hand = tmp;
+    from.hand = to.hand; to.hand = tmp;
     room.pendingSwap = null;
     room.message = from.name + ' 与 ' + to.name + ' 交换了手牌';
     pushSystemMessage('🔄 ' + from.name + ' 与 ' + to.name + ' 交换了手牌', 1);
-    nextTurn(1);
-    broadcastState();
+    nextTurn(1); broadcastState();
   }
 
   function handleTyping(peerId, typing) {
@@ -704,7 +684,6 @@
     else delete room.typingNow[peerId];
     broadcastState();
   }
-
   function handleUpdateAvatar(peerId, avatar) {
     const room = state.room;
     if (!room) return;
@@ -731,7 +710,8 @@
           isYou: pl.id === p.id, hand: pl.id === p.id ? pl.hand : undefined,
           unoCalled: pl.unoCalled, score: pl.score || 0, alive: pl.alive !== false,
           unoGraceUntil: pl.unoGraceUntil || 0,
-          avatar: pl.avatar || '😀', isAI: pl.isAI || false
+          avatar: pl.avatar || '😀', isAI: pl.isAI || false,
+          title: pl.title || ''
         })),
         turnId: room.players[room.turnIndex] ? room.players[room.turnIndex].id : null,
         currentColor: room.currentColor, topCard: room.topCard,
@@ -760,7 +740,7 @@
   function createRoom() {
     const primaryServer = 'peerjs';
     const fallbackServer = 'vercel';
-    showLoading('正在连接 PeerJS 官方…', '若 8 秒内无响应，将自动切换到备用服务器');
+    showLoading('正在连接 服务器 A…', '若 8 秒内无响应，将切换到服务器 B');
     const hostDigits = Math.floor(1000 + Math.random() * 9000);
     tryCreateOnServer(primaryServer, hostDigits, fallbackServer);
   }
@@ -772,7 +752,8 @@
       id: roomId, hostId: myPeerId, phase: 'waiting', serverId: serverId,
       players: [{
         id: myPeerId, name: getName(), hand: [], unoCalled: false,
-        score: 0, alive: true, unoGraceUntil: 0, avatar: getAvatar()
+        score: 0, alive: true, unoGraceUntil: 0, avatar: getAvatar(),
+        title: getTitle()
       }],
       deck: [], discard: [], topCard: null,
       currentColor: null, turnIndex: 0, direction: 1,
@@ -786,7 +767,7 @@
     const { peer, error } = createPeer(myPeerId, serverId);
     if (error || !peer) {
       if (fallbackServer) {
-        showLoading('PeerJS 官方不可用', '正在尝试备用服务器…');
+        showLoading('服务器 A 不可用', '正在尝试服务器 B…');
         setTimeout(() => tryCreateOnServer(fallbackServer, hostDigits, null), 400);
       } else { hideLoading(); toast('所有信令服务器都不可用'); }
       return;
@@ -796,7 +777,7 @@
       if (opened) return;
       try { peer.destroy(); } catch (e) {}
       if (fallbackServer) {
-        showLoading('PeerJS 官方超时', '正在尝试备用服务器…');
+        showLoading('服务器 A 超时', '正在尝试服务器 B…');
         setTimeout(() => tryCreateOnServer(fallbackServer, hostDigits, null), 400);
       } else { hideLoading(); toast('无法连接信令服务器'); }
     }, 8000);
@@ -832,9 +813,8 @@
       $('roomCode').style.display = '';
       $('roomActions').style.display = '';
       $('roomWarning').style.display = '';
-      document.getElementById('room').classList.remove('match-mode');
-      const serverLabel = SERVERS[serverId].label +
-        (serverId === 'vercel' ? '（PeerJS 超时自动切换）' : '');
+      $('room').classList.remove('match-mode');
+      const serverLabel = SERVERS[serverId].label;
       $('roomServerHint').textContent = '信令服务器：' + serverLabel;
       $('rulesBtn').classList.add('show');
       switchScreen('room');
@@ -845,7 +825,7 @@
       clearTimeout(timeout);
       try { peer.destroy(); } catch (e) {}
       if (fallbackServer) {
-        showLoading('PeerJS 官方出错', '正在尝试备用服务器…');
+        showLoading('服务器 A 出错', '正在尝试服务器 B…');
         setTimeout(() => tryCreateOnServer(fallbackServer, hostDigits, null), 400);
       } else { hideLoading(); toast('连接信令服务器失败'); }
     });
@@ -855,7 +835,7 @@
     const parsed = parseRoomId(inputRoomId);
     if (!parsed) { toast('房间号格式不对，应以 P 或 R 开头'); return; }
     if (parsed.serverId === 'vercel' && !getVercelHost()) {
-      toast('房主使用了备用服务器，但你的备用地址未配置'); return;
+      toast('房主使用了服务器 B，但未配置地址'); return;
     }
     const serverLabel = SERVERS[parsed.serverId].label;
     showLoading('正在加入房间 ' + parsed.fullRoomId + '…', '使用 ' + serverLabel);
@@ -888,7 +868,9 @@
       state.hostConn.on('open', () => {
         connOpened = true;
         clearTimeout(connTimeout);
-        state.hostConn.send({ type: 'join', name: getName(), avatar: getAvatar() });
+        state.hostConn.send({
+          type: 'join', name: getName(), avatar: getAvatar(), title: getTitle()
+        });
       });
       state.hostConn.on('data', data => handleHostMessage(data));
       state.hostConn.on('close', () => { hideLoading(); toast('与房主断开连接'); resetAndGoHome(); });
@@ -900,7 +882,7 @@
     peer.on('error', err => {
       if (opened) return;
       clearTimeout(timeout);
-      hideLoading(); toast('连接失败：' + (err.type || err.message || '未知错误'));
+      hideLoading(); toast('连接失败');
       resetAndGoHome();
     });
   }
@@ -981,17 +963,20 @@
         delete state.clientConns[old.id];
         old.id = conn.peer;
         old.avatar = data.avatar || old.avatar || '😀';
+        old.title = data.title || old.title || '';
         state.clientConns[conn.peer] = conn;
         pushSystemMessage(name + ' 重新连接了房间', 1);
         broadcastState();
         return;
       }
       if (room.phase !== 'waiting') { conn.send({ type: 'toast', msg: '游戏已开始' }); return; }
-      if (room.players.length >= MAX_PLAYERS) { conn.send({ type: 'toast', msg: '房间已满（最多 ' + MAX_PLAYERS + ' 人）' }); return; }
+      if (room.players.length >= MAX_PLAYERS) {
+        conn.send({ type: 'toast', msg: '房间已满（最多 ' + MAX_PLAYERS + ' 人）' }); return;
+      }
       room.players.push({
         id: conn.peer, name: name,
         hand: [], unoCalled: false, score: 0, alive: true, unoGraceUntil: 0,
-        avatar: data.avatar || '😀'
+        avatar: data.avatar || '😀', title: data.title || ''
       });
       state.clientConns[conn.peer] = conn;
       pushSystemMessage(name + ' 加入了房间', 1);
@@ -1023,9 +1008,8 @@
     if (!roomId) return;
     const link = buildInviteLink(roomId);
     try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(link);
-      } else {
+      if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(link);
+      else {
         const ta = document.createElement('textarea');
         ta.value = link; ta.style.position = 'fixed'; ta.style.opacity = '0';
         document.body.appendChild(ta); ta.focus(); ta.select();
@@ -1044,7 +1028,6 @@
       }
     } catch (e) { toast('复制失败，请长按手动复制'); }
   }
-
   async function shareRoom() {
     const roomId = state.roomId;
     if (!roomId) return;
@@ -1052,11 +1035,7 @@
     const text = '🎮 UNO 联机 - 房间号 ' + roomId + '\n点开直接加入：' + link;
     if (navigator.share) {
       try {
-        await navigator.share({
-          title: 'UNO 联机邀请',
-          text: '加入我的 UNO 房间：' + roomId,
-          url: link
-        });
+        await navigator.share({ title: 'UNO 联机邀请', text: '加入我的 UNO 房间：' + roomId, url: link });
         return;
       } catch (e) { if (e.name === 'AbortError') return; }
     }
@@ -1076,8 +1055,10 @@
     window.addEventListener('online', () => {
       if (state.peer && state.peer.disconnected) tryAutoReconnect();
     });
+    window.addEventListener('resize', () => {
+      if (state.S && (state.S.phase === 'playing' || state.S.phase === 'roundEnd')) layoutCircle();
+    });
   }
-
   function handleVisibilityReturn() {
     const hiddenTime = state.hiddenAt ? Date.now() - state.hiddenAt : 0;
     state.hiddenAt = null;
@@ -1093,12 +1074,10 @@
         else delete state.clientConns[k];
       });
       if (alive < state.room.players.length - 1) {
-        toast('部分玩家已断开');
-        broadcastState();
+        toast('部分玩家已断开'); broadcastState();
       }
     }
   }
-
   function tryAutoReconnect() {
     if (state.reconnecting) return;
     state.reconnecting = true;
@@ -1114,12 +1093,9 @@
       state.reconnecting = false;
       if (state.peer && !state.peer.disconnected && !state.peer.destroyed) {
         toast('连接已恢复'); hideReconnectButton();
-      } else {
-        showReconnectButton(); toast('连接未恢复，请点「重连」');
-      }
+      } else { showReconnectButton(); toast('连接未恢复，请点「重连」'); }
     }, 5000);
   }
-
   function showReconnectButton() {
     const btn = $('reconnectBtn');
     if (btn) btn.style.display = 'block';
@@ -1128,7 +1104,6 @@
     const btn = $('reconnectBtn');
     if (btn) btn.style.display = 'none';
   }
-
   function manualReconnect() {
     if (!state.roomId || !state.room) { resetAndGoHome(); return; }
     if (state.reconnecting) return;
@@ -1141,7 +1116,6 @@
     if (state.isHost) reconnectHost(serverId, 0);
     else reconnectClient(serverId);
   }
-
   function reconnectHost(serverId, attempt) {
     const myPeerId = 'uno-host-' + state.roomId;
     const { peer, error } = createPeer(myPeerId, serverId);
@@ -1182,13 +1156,10 @@
         setTimeout(() => reconnectHost(serverId, attempt + 1), 1500 * (attempt + 1));
       } else {
         $('reconnectOverlay').classList.remove('show');
-        state.reconnecting = false;
-        showReconnectButton();
-        toast('重连失败');
+        state.reconnecting = false; showReconnectButton(); toast('重连失败');
       }
     });
   }
-
   function reconnectClient(serverId) {
     state.myPeerId = 'uno-client-' + Math.random().toString(36).slice(2, 8);
     state.myPlayerId = state.myPeerId;
@@ -1211,7 +1182,9 @@
       const hostId = 'uno-host-' + state.roomId;
       state.hostConn = peer.connect(hostId);
       state.hostConn.on('open', () => {
-        state.hostConn.send({ type: 'join', name: getName(), avatar: getAvatar() });
+        state.hostConn.send({
+          type: 'join', name: getName(), avatar: getAvatar(), title: getTitle()
+        });
       });
       state.hostConn.on('data', data => handleHostMessage(data));
       state.hostConn.on('close', () => {
@@ -1231,10 +1204,9 @@
     });
   }
 
-  /* ============ 8.6 人机对战 ============ */
+  /* ============ 人机对战 ============ */
   function pickAINames(count) {
     const pool = AI_NAME_POOL.slice();
-    // 洗牌名字池
     for (let i = pool.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [pool[i], pool[j]] = [pool[j], pool[i]];
@@ -1249,29 +1221,27 @@
     }
     return pool.slice(0, count);
   }
-
   function startAIGame(totalCount, difficulty) {
     const aiCount = totalCount - 1;
     const aiNames = pickAINames(aiCount);
     const aiAvatars = pickAIAvatars(aiCount);
-
     state.isHost = true;
     state.roomId = 'LOCAL';
     state.usedServer = 'local';
     state.myPeerId = 'me';
     state.myPlayerId = 'me';
     state.isMatchmaking = false;
-
     state.room = {
       id: 'LOCAL', hostId: 'me', phase: 'waiting', serverId: 'local',
       aiDifficulty: difficulty,
       players: [{
         id: 'me', name: getName(), hand: [], unoCalled: false,
-        score: 0, alive: true, unoGraceUntil: 0, avatar: getAvatar(), isAI: false
+        score: 0, alive: true, unoGraceUntil: 0, avatar: getAvatar(),
+        isAI: false, title: getTitle()
       }].concat(Array.from({ length: aiCount }, (_, i) => ({
         id: 'ai' + i, name: aiNames[i],
         hand: [], unoCalled: false, score: 0, alive: true,
-        unoGraceUntil: 0, avatar: aiAvatars[i], isAI: true
+        unoGraceUntil: 0, avatar: aiAvatars[i], isAI: true, title: ''
       }))),
       deck: [], discard: [], topCard: null,
       currentColor: null, turnIndex: 0, direction: 1,
@@ -1283,18 +1253,15 @@
       eliminatedId: null, eliminatedName: null,
       _aiTurnScheduled: false
     };
-
     hideLoading();
     $('rulesBtn').classList.remove('show');
     switchScreen('game');
     startGame();
-    // ✅ 人机对战隐藏邀请/分享按钮
     $('copyRoomBtn').style.display = 'none';
     $('shareBtn').style.display = 'none';
     $('roomWarning').style.display = 'none';
     $('reconnectBtn').style.display = 'none';
   }
-
   function scheduleAITurn() {
     const room = state.room;
     if (!room || room.serverId !== 'local') return;
@@ -1314,7 +1281,6 @@
       runAITurn(aiId);
     }, delay);
   }
-
   function runAITurn(aiId) {
     const room = state.room;
     if (!room) return;
@@ -1343,7 +1309,6 @@
     handlePlayCard(aiId, card.id, color);
     setTimeout(() => aiAfterPlay(ai), 400);
   }
-
   function aiAfterPlay(ai) {
     const room = state.room;
     if (!room) return;
@@ -1357,7 +1322,6 @@
       if (Math.random() < prob) handleCallUno(ai.id);
     }
   }
-
   function decideAICard(playable, ai, difficulty) {
     if (difficulty === 'easy') return playable[Math.floor(Math.random() * playable.length)];
     if (difficulty === 'normal') {
@@ -1385,7 +1349,6 @@
     if (nonWild.length > 0) return nonWild[0];
     return playable[0];
   }
-
   function pickAIColor(ai) {
     const counts = { red: 0, yellow: 0, green: 0, blue: 0 };
     ai.hand.forEach(c => { if (c.color !== 'wild') counts[c.color] = (counts[c.color] || 0) + 1; });
@@ -1395,7 +1358,6 @@
     });
     return best;
   }
-
   function handleAIPendingChallenge() {
     const room = state.room;
     if (!room || room.serverId !== 'local') return;
@@ -1417,8 +1379,7 @@
     }, 1200 + Math.random() * 800);
   }
 
-  /* ============ 8.7 随机匹配 ============ */
-  // ✅ 大厅：进入即自动匹配，隐藏房间号，最多 10 人
+  /* ============ 随机匹配 ============ */
   function startMatchmaking(serverId) {
     showLoading('正在加入大厅…', SERVERS[serverId].label + ' 大厅');
     const lobbyId = (serverId === 'peerjs' ? 'P' : 'R') + 'LOBBY';
@@ -1441,10 +1402,9 @@
       clearTimeout(timeout);
       try { peer.destroy(); } catch (e) {}
       if (err.type === 'unavailable-id') matchmakingAsClient(serverId, lobbyId);
-      else { hideLoading(); toast('匹配失败：' + (err.type || '未知')); }
+      else { hideLoading(); toast('匹配失败'); }
     });
   }
-
   function matchmakingBecomeHost(serverId, lobbyId, peer) {
     state.isHost = true;
     state.roomId = lobbyId;
@@ -1458,7 +1418,7 @@
       isMatchmaking: true, matchCountdown: null,
       players: [{
         id: state.myPeerId, name: getName(), hand: [], unoCalled: false,
-        score: 0, alive: true, unoGraceUntil: 0, avatar: getAvatar()
+        score: 0, alive: true, unoGraceUntil: 0, avatar: getAvatar(), title: getTitle()
       }],
       deck: [], discard: [], topCard: null,
       currentColor: null, turnIndex: 0, direction: 1,
@@ -1479,19 +1439,17 @@
       if (err.type === 'unavailable-id') { toast('大厅号冲突'); resetAndGoHome(); }
     });
     hideLoading();
-    // ✅ 隐藏房间号，显示"匹配中"
     $('roomLabel').textContent = '🎲 匹配大厅';
     $('roomCode').textContent = '匹配中';
     $('roomCode').style.display = '';
     $('roomActions').style.display = 'none';
     $('roomWarning').style.display = 'none';
-    document.getElementById('room').classList.add('match-mode');
+    $('room').classList.add('match-mode');
     $('roomServerHint').textContent = SERVERS[serverId].label;
     $('rulesBtn').classList.remove('show');
     switchScreen('room');
     broadcastState();
   }
-
   function matchmakingAsClient(serverId, lobbyId) {
     const myPeerId = 'uno-mm-' + Math.random().toString(36).slice(2, 8);
     const { peer, error } = createPeer(myPeerId, serverId);
@@ -1524,7 +1482,7 @@
       conn.on('open', () => {
         connOpened = true;
         clearTimeout(ct);
-        conn.send({ type: 'join', name: getName(), avatar: getAvatar() });
+        conn.send({ type: 'join', name: getName(), avatar: getAvatar(), title: getTitle() });
       });
       conn.on('data', data => handleHostMessage(data));
       conn.on('close', () => {
@@ -1541,7 +1499,6 @@
       hideLoading(); toast('连接失败'); resetAndGoHome();
     });
   }
-
   function checkMatchmaking() {
     const room = state.room;
     if (!room || !room.isMatchmaking || !state.isHost) return;
@@ -1575,7 +1532,7 @@
     }
   }
 
-  /* ============ 9. UI 渲染 ============ */
+  /* ============ UI 渲染 ============ */
   function applyState(newState) {
     hideLoading();
     $('reconnectOverlay').classList.remove('show');
@@ -1628,14 +1585,13 @@
   function renderRoom() {
     const S = state.S;
     const host = S.hostId === myId();
-    // ✅ 匹配模式：隐藏房间号，显示人数和倒计时
     if (S.isMatchmaking) {
       $('roomLabel').textContent = '🎲 匹配大厅';
       $('roomCode').textContent = '匹配中 ' + S.players.length + '/' + MAX_PLAYERS;
       $('roomCode').style.display = '';
       $('roomActions').style.display = 'none';
       $('roomWarning').style.display = 'none';
-      document.getElementById('room').classList.add('match-mode');
+      $('room').classList.add('match-mode');
       if (S.players.length < 2) {
         $('waitTip').textContent = '等待更多玩家加入…（' + S.players.length + ' 人）';
         $('waitTip').style.display = 'block';
@@ -1656,13 +1612,12 @@
       ).join('');
       return;
     }
-    // 普通房间 / 本地 AI
     $('roomLabel').textContent = S.isLocalAI ? '人 机 对 战' : '房 间 号';
     $('roomCode').textContent = S.isLocalAI ? '本地对局' : S.id;
     $('roomCode').style.display = '';
     $('roomActions').style.display = S.isLocalAI ? 'none' : '';
     $('roomWarning').style.display = S.isLocalAI ? 'none' : '';
-    document.getElementById('room').classList.remove('match-mode');
+    $('room').classList.remove('match-mode');
     const serverLabel = SERVERS[S.serverId] ? SERVERS[S.serverId].label : '';
     $('roomServerHint').textContent = serverLabel ? ('信令服务器：' + serverLabel) : '';
     const modeText = S.rules.mode === 'score' ? ' · 计分制' : (S.rules.mode === 'elimination' ? ' · 淘汰制' : ' · 单局制');
@@ -1706,7 +1661,10 @@
         '<div class="opp-name">' + esc(p.name) + '</div>' +
         graceHtml + scoreHtml + specHtml +
         '</div>';
-    }).join('') : '<div class="opp"><div class="opp-name">等待中…</div></div>';
+    }).join('') : '';
+
+    // 布局
+    setTimeout(layoutCircle, 0);
 
     const top = S.topCard;
     const newTopId = top ? top.id : null;
@@ -1806,7 +1764,7 @@
       const host2 = S.hostId === myId();
       $('overlayTitle').textContent = S.winnerName + ' 赢得本局';
       $('overlayScore').style.display = 'block';
-      $('overlayScore').innerHTML = S.eliminatedName ? ('💀 ' + S.eliminatedName + ' 被淘汰，进入观战') : '本局结束';
+      $('overlayScore').innerHTML = S.eliminatedName ? ('💀 ' + S.eliminatedName + ' 被淘汰') : '本局结束';
       $('overlayBtn').textContent = host2 ? '下一局' : '等待房主开始…';
       $('overlayBtn').disabled = !host2;
       $('overlay').classList.add('show');
@@ -1815,6 +1773,35 @@
       $('overlayScore').style.display = 'none';
     }
     if (S.phase === 'playing') scheduleUnoRefresh();
+  }
+
+  // ✅ 按出牌顺序把对手排成环形
+  function layoutCircle() {
+    const arena = $('circleArena');
+    if (!arena) return;
+    const opps = arena.querySelectorAll('.opp');
+    const M = opps.length;
+    if (M === 0) return;
+
+    const rect = arena.getBoundingClientRect();
+    const cx = rect.width / 2;
+    const cy = rect.height / 2;
+    const availW = rect.width - 40;
+    const availH = rect.height - 40;
+    const R = Math.min(availW, availH) * 0.42;
+
+    // 角度从 180°（正左）经过 270°（正上）到 360°（正右）
+    opps.forEach((el, idx) => {
+      let angle;
+      if (M === 1) angle = 270;
+      else angle = 180 + idx * (180 / (M - 1));
+      const rad = angle * Math.PI / 180;
+      const x = cx + R * Math.cos(rad);
+      const y = cy + R * Math.sin(rad);
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      el.style.transform = 'translate(-50%, -50%)';
+    });
   }
 
   let unoRefreshTimer = null;
@@ -1885,7 +1872,6 @@
     }
     state.lastChatLen = msgs.length;
   }
-
   let chatPopupTimer = null;
   function showChatPopup(m, opts) {
     opts = opts || {};
@@ -1902,7 +1888,6 @@
       popup.classList.remove('judge');
     }, opts.judge ? 6000 : 3500);
   }
-
   function renderTypingIndicator() {
     const S = state.S;
     if (!S) return;
@@ -1925,7 +1910,6 @@
       }
     } else el.classList.remove('show');
   }
-
   function openChat() {
     $('chatPanel').classList.add('open');
     state.unreadCount = 0;
@@ -1933,7 +1917,7 @@
     setTimeout(() => { $('chatMessages').scrollTop = $('chatMessages').scrollHeight; }, 320);
   }
 
-  /* ============ 10. 设置/房规 ============ */
+  /* ============ 设置 ============ */
   let globalFontScale = parseFloat(localStorage.getItem('uno_font_scale') || '100') / 100;
   function applyFontScale() {
     document.documentElement.style.setProperty('--fs', globalFontScale);
@@ -1941,41 +1925,70 @@
   function renderAvatarPickers() {
     const emojis = ['😀','😎','🐱','🐶','🦊','🐼','🦁','🐸','🐵','🦄','🐙','👻','🤖','👽','🎃','🍔','⭐','🔥','💎','🎮','🎲','🍕','🌈','🚀'];
     const current = getAvatar();
-    ['avatarPickerHome', 'avatarPickerSettings'].forEach(id => {
+    const setupCur = state.setupAvatar || '😀';
+    const map = {
+      avatarPickerSettings: current,
+      avatarPickerSetup: setupCur
+    };
+    Object.keys(map).forEach(id => {
       const el = $(id);
       if (!el) return;
+      const cur = map[id];
       el.innerHTML = emojis.map(e =>
-        '<button class="avatar-option' + (e === current ? ' active' : '') +
+        '<button class="avatar-option' + (e === cur ? ' active' : '') +
         '" data-emoji="' + e + '">' + e + '</button>'
       ).join('');
     });
   }
   function bindAvatarPickers() {
-    ['avatarPickerHome', 'avatarPickerSettings'].forEach(id => {
-      const el = $(id);
-      if (!el) return;
+    document.querySelectorAll('#avatarPickerSettings, #avatarPickerSetup').forEach(el => {
       el.addEventListener('click', e => {
         const btn = e.target.closest ? e.target.closest('.avatar-option') : null;
         if (!btn) return;
         const emoji = btn.dataset.emoji;
-        localStorage.setItem('uno_avatar', emoji);
         sfxClick();
-        renderAvatarPickers();
-        if (state.S && state.S.phase && !state.isHost && state.hostConn && state.hostConn.open) {
-          state.hostConn.send({ type: 'updateAvatar', avatar: emoji });
-        } else if (state.isHost && state.room) {
-          const me = findPlayer(state.myPlayerId);
-          if (me) me.avatar = emoji;
-          broadcastState();
+        if (el.id === 'avatarPickerSetup') {
+          state.setupAvatar = emoji;
+        } else {
+          localStorage.setItem('uno_avatar', emoji);
+          updateAccountChip();
+          if (state.S && state.S.phase && !state.isHost && state.hostConn && state.hostConn.open) {
+            state.hostConn.send({ type: 'updateAvatar', avatar: emoji });
+          } else if (state.isHost && state.room) {
+            const me = findPlayer(state.myPlayerId);
+            if (me) me.avatar = emoji;
+            broadcastState();
+          }
         }
+        renderAvatarPickers();
       });
     });
   }
-
   function initSettings() {
     applyFontScale();
+    const nameInput = $('settingsNameInput');
+    const titleInput = $('settingsTitleInput');
+    nameInput.value = getName();
+    titleInput.value = getTitle();
+    nameInput.addEventListener('change', function () {
+      const v = this.value.trim().slice(0, 8) || '玩家';
+      localStorage.setItem('uno_name', v);
+      updateAccountChip();
+    });
+    titleInput.addEventListener('change', function () {
+      const v = this.value.trim().slice(0, 12);
+      localStorage.setItem('uno_title', v);
+    });
+
     const vercelHostInput = $('vercelHostInput');
     vercelHostInput.value = localStorage.getItem('uno_vercel_host') || '';
+    vercelHostInput.addEventListener('change', function () {
+      const v = this.value.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+      this.value = v;
+      if (v) localStorage.setItem('uno_vercel_host', v);
+      else localStorage.removeItem('uno_vercel_host');
+    });
+
     const volumeSlider = $('volumeSlider');
     const fontSlider = $('fontSlider');
     volumeSlider.value = Math.round(globalVolume * 100);
@@ -1997,19 +2010,19 @@
       $('fontValue').textContent = v;
       applyFontScale();
     });
-    vercelHostInput.addEventListener('change', function () {
-      const v = this.value.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '');
-      this.value = v;
-      if (v) localStorage.setItem('uno_vercel_host', v);
-      else localStorage.removeItem('uno_vercel_host');
+
+    // 设置导航切换
+    document.querySelectorAll('.settings-nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const tab = item.dataset.tab;
+        document.querySelectorAll('.settings-nav-item').forEach(x => x.classList.toggle('active', x === item));
+        document.querySelectorAll('.settings-pane').forEach(p => {
+          p.classList.toggle('active', p.dataset.pane === tab);
+        });
+      });
     });
-    $('settingsBtn').addEventListener('click', () => { initAudio(); $('settingsPanel').classList.add('show'); });
-    $('settingsCloseBtn').addEventListener('click', () => $('settingsPanel').classList.remove('show'));
-    $('guideBtn').addEventListener('click', () => { initAudio(); $('guidePanel').classList.add('show'); });
-    $('guideCloseBtn').addEventListener('click', () => $('guidePanel').classList.remove('show'));
-    renderAvatarPickers();
-    bindAvatarPickers();
-    bindRulesEvents();
+
+    $('settingsBackBtn').addEventListener('click', () => switchScreen('home'));
   }
 
   function bindRulesEvents() {
@@ -2069,6 +2082,7 @@
     });
   }
 
+  /* ============ 聊天 ============ */
   let typingSendTimer = null;
   let lastTypingSent = 0;
   function bindChatEvents() {
@@ -2192,17 +2206,36 @@
     } catch (e) {}
   }
 
+  /* ============ 主入口 ============ */
   function init() {
-    const savedName = localStorage.getItem('uno_name') || '';
-    $('nameInput').value = savedName;
+    // 账户系统
+    const hasAccount = !!localStorage.getItem('uno_name');
+    if (!hasAccount) {
+      state.setupAvatar = '😀';
+      $('setupModal').classList.add('show');
+      renderAvatarPickers();
+      $('setupConfirmBtn').addEventListener('click', () => {
+        const v = $('setupNameInput').value.trim().slice(0, 8) || '玩家';
+        localStorage.setItem('uno_name', v);
+        localStorage.setItem('uno_avatar', state.setupAvatar || '😀');
+        if (!localStorage.getItem('uno_title')) {
+          localStorage.setItem('uno_title', '新手玩家');
+        }
+        $('setupModal').classList.remove('show');
+        updateAccountChip();
+      });
+      $('setupNameInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') $('setupConfirmBtn').click();
+      });
+    }
+
+    // URL 邀请
     const urlRoom = getRoomIdFromURL();
     if (urlRoom) {
-      $('inviteBanner').style.display = 'flex';
-      $('inviteRoomId').textContent = urlRoom;
       $('roomInput').value = urlRoom;
-      if (savedName.trim()) $('actionBlock').classList.add('show');
-    } else if (savedName.trim()) $('actionBlock').classList.add('show');
+    }
 
+    // 会话恢复
     try {
       const saved = sessionStorage.getItem('uno_host_room');
       if (saved && !urlRoom) {
@@ -2220,16 +2253,21 @@
       }
     } catch (e) {}
 
-    $('nameInput').addEventListener('input', function () {
-      $('actionBlock').classList.toggle('show', this.value.trim().length > 0);
-    });
+    updateAccountChip();
     initSettings();
+    bindAvatarPickers();
     bindChatEvents();
     setupKeyboard();
     setupVisibilityHandling();
-    $('copyRoomBtn').addEventListener('click', () => { initAudio(); copyInviteLink(); });
-    $('shareBtn').addEventListener('click', () => { initAudio(); shareRoom(); });
-    $('reconnectBtn').addEventListener('click', () => { initAudio(); manualReconnect(); });
+    bindRulesEvents();
+
+    // 账户按钮
+    $('accountChip').addEventListener('click', () => {
+      initAudio();
+      switchScreen('settings');
+    });
+
+    // 首页
     $('createBtn').addEventListener('click', () => { initAudio(); createRoom(); });
     $('joinBtn').addEventListener('click', () => {
       initAudio();
@@ -2237,9 +2275,14 @@
       if (!rid) return toast('请输入房间号');
       joinRoom(rid);
     });
+    $('roomInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('joinBtn').click(); });
+
+    // 人机
     $('aiGameBtn').addEventListener('click', () => {
       initAudio();
-      if (!$('nameInput').value.trim()) { toast('请先输入昵称'); $('nameInput').focus(); return; }
+      if (!localStorage.getItem('uno_name')) {
+        toast('请先设置昵称'); return;
+      }
       $('aiConfigPanel').classList.add('show');
     });
     $('aiCancelBtn').addEventListener('click', () => $('aiConfigPanel').classList.remove('show'));
@@ -2269,29 +2312,23 @@
       $('aiConfigPanel').classList.remove('show');
       startAIGame(count, diff);
     });
-    $('matchBtn').addEventListener('click', () => {
-      initAudio();
-      if (!$('nameInput').value.trim()) { toast('请先输入昵称'); $('nameInput').focus(); return; }
-      $('matchConfigPanel').classList.add('show');
-    });
-    $('matchCancelBtn').addEventListener('click', () => $('matchConfigPanel').classList.remove('show'));
+
+    // 匹配
     $('matchPeerBtn').addEventListener('click', () => {
-      initAudio(); $('matchConfigPanel').classList.remove('show'); startMatchmaking('peerjs');
+      initAudio();
+      if (!localStorage.getItem('uno_name')) { toast('请先设置昵称'); return; }
+      startMatchmaking('peerjs');
     });
     $('matchVercelBtn').addEventListener('click', () => {
-      initAudio(); $('matchConfigPanel').classList.remove('show'); startMatchmaking('vercel');
-    });
-    $('inviteJoinBtn').addEventListener('click', () => {
       initAudio();
-      const rid = $('roomInput').value.trim() || $('inviteRoomId').textContent;
-      if (!rid) return toast('房间号为空');
-      if (!$('nameInput').value.trim()) { toast('请先输入昵称'); $('nameInput').focus(); return; }
-      joinRoom(rid);
+      if (!localStorage.getItem('uno_name')) { toast('请先设置昵称'); return; }
+      startMatchmaking('vercel');
     });
-    $('roomInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('joinBtn').click(); });
-    $('nameInput').addEventListener('keydown', e => {
-      if (e.key === 'Enter' && $('nameInput').value.trim()) $('createBtn').click();
-    });
+
+    // 房间
+    $('copyRoomBtn').addEventListener('click', () => { initAudio(); copyInviteLink(); });
+    $('shareBtn').addEventListener('click', () => { initAudio(); shareRoom(); });
+    $('reconnectBtn').addEventListener('click', () => { initAudio(); manualReconnect(); });
     $('startBtn').addEventListener('click', () => {
       const S = state.S;
       if (S && S.isMatchmaking) {
@@ -2320,6 +2357,9 @@
       resetAndGoHome();
       toast('已退出房间');
     });
+    $('guideBtn').addEventListener('click', () => { initAudio(); $('guidePanel').classList.add('show'); });
+    $('guideCloseBtn').addEventListener('click', () => $('guidePanel').classList.remove('show'));
+
     $('overlayBtn').addEventListener('click', () => {
       const btn = $('overlayBtn');
       if (btn.disabled) return;
@@ -2346,6 +2386,7 @@
         broadcastState();
       } else if (state.hostConn && state.hostConn.open) state.hostConn.send({ type: 'start' });
     });
+
     $('myHand').addEventListener('click', e => {
       const el = e.target.closest ? e.target.closest('.card') : null;
       if (!el || !state.S || state.S.phase !== 'playing') return;

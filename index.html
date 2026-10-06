@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="UNO">
 <meta name="theme-color" content="#1b3a2c">
-
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231c332a'/%3E%3Crect x='12' y='9' width='40' height='46' rx='6' fill='%23e63946' stroke='%23ffffff' stroke-width='2.5'/%3E%3Ctext x='32' y='39' text-anchor='middle' font-family='Arial Black, sans-serif' font-size='18' font-weight='900' fill='%23ffffff' font-style='italic'%3EUNO%3C/text%3E%3C/svg%3E">
 <title>UNO</title>
 <link rel="stylesheet" href="style.css">
@@ -16,36 +14,121 @@
 <body>
 
 <div id="app">
+  <!-- ================= 首页 ================= -->
   <section id="home" class="screen active">
-    <button id="settingsBtn" title="设置">⚙</button>
+    <div class="home-top">
+      <button id="accountChip" class="account-chip">
+        <span class="account-avatar" id="homeAvatar">😀</span>
+        <span class="account-name" id="homeName">游客</span>
+        <span class="account-gear">⚙</span>
+      </button>
+    </div>
+
     <h1>UNO</h1>
 
-    <div id="inviteBanner" class="invite-banner" style="display:none">
-      <div class="invite-text">🎮 收到邀请：房间 <b id="inviteRoomId">----</b></div>
-      <button id="inviteJoinBtn" class="invite-btn">立即加入</button>
+    <div class="home-section">
+      <div class="section-title">单人游戏</div>
+      <button id="aiGameBtn" class="btn-primary">🤖 人机对决</button>
     </div>
 
-    <div class="name-block">
-      <div class="name-title">👤 你的昵称与头像</div>
-      <input id="nameInput" placeholder="输入昵称（最多 8 字）" maxlength="8" autocomplete="off">
-      <div class="avatar-picker-inline" id="avatarPickerHome"></div>
-    </div>
-
-    <div class="action-block" id="actionBlock">
-      <div class="action-hint">✅ 昵称已就绪</div>
+    <div class="home-section">
+      <div class="section-title">多人游戏</div>
       <button id="createBtn" class="btn-primary">创建房间</button>
-      <div class="action-row-2">
-        <button id="aiGameBtn" class="btn-secondary">🤖 人机对战</button>
-        <button id="matchBtn" class="btn-secondary">🎲 随机匹配</button>
-      </div>
-      <div class="divider">— 或 —</div>
       <div class="join-row">
         <input id="roomInput" placeholder="输入房间号" maxlength="8" autocomplete="off">
         <button id="joinBtn">加入</button>
       </div>
     </div>
+
+    <div class="home-section">
+      <div class="section-title">大厅随机匹配</div>
+      <div class="match-row">
+        <button id="matchPeerBtn" class="btn-secondary">🌐 服务器 A</button>
+        <button id="matchVercelBtn" class="btn-secondary">☁️ 服务器 B</button>
+      </div>
+    </div>
   </section>
 
+  <!-- ================= 设置 ================= -->
+  <section id="settings" class="screen">
+    <div class="settings-bar">
+      <button id="settingsBackBtn" class="top-btn">←</button>
+      <div class="settings-bar-title">设置</div>
+    </div>
+    <div class="settings-layout">
+      <nav class="settings-nav" id="settingsNav">
+        <div class="settings-nav-item active" data-tab="account">👤 账户</div>
+        <div class="settings-nav-item" data-tab="basic">🔧 基本设置</div>
+        <div class="settings-nav-item" data-tab="network">📡 通信设置</div>
+        <div class="settings-nav-item" data-tab="about">ℹ️ 关于</div>
+      </nav>
+      <div class="settings-content">
+        <!-- 账户 -->
+        <div class="settings-pane active" data-pane="account">
+          <h3>账户</h3>
+          <div class="setting-item">
+            <label>昵称</label>
+            <input id="settingsNameInput" placeholder="输入昵称" maxlength="8" autocomplete="off">
+          </div>
+          <div class="setting-item">
+            <label>称号</label>
+            <input id="settingsTitleInput" placeholder="例如：新手玩家" maxlength="12" autocomplete="off">
+          </div>
+          <div class="setting-item">
+            <label>头像</label>
+            <div class="avatar-picker-inline" id="avatarPickerSettings"></div>
+          </div>
+        </div>
+
+        <!-- 基本设置 -->
+        <div class="settings-pane" data-pane="basic">
+          <h3>基本设置</h3>
+          <div class="setting-item">
+            <div class="setting-label"><span>音量</span><span class="setting-value"><span id="volumeValue">100</span>%</span></div>
+            <div class="slider-row">
+              <span style="color:#9fc2b5">🔈</span>
+              <input type="range" id="volumeSlider" min="0" max="100" value="100">
+              <span style="color:#9fc2b5">🔊</span>
+            </div>
+          </div>
+          <div class="setting-item">
+            <div class="setting-label"><span>字体大小</span><span class="setting-value"><span id="fontValue">100</span>%</span></div>
+            <div class="slider-row">
+              <span style="color:#9fc2b5;font-size:12px">A</span>
+              <input type="range" id="fontSlider" min="80" max="160" value="100">
+              <span style="color:#9fc2b5;font-size:20px">A</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 通信设置 -->
+        <div class="settings-pane" data-pane="network">
+          <h3>通信设置</h3>
+          <div class="setting-item">
+            <label>备用信令服务器地址</label>
+            <input id="vercelHostInput" placeholder="例如 uno-peerjs-server.onrender.com"
+                   style="text-align:left;font-size:13px" autocomplete="off">
+            <div class="setting-hint">留空则使用内置地址。不含 https:// 前缀。</div>
+          </div>
+        </div>
+
+        <!-- 关于 -->
+        <div class="settings-pane" data-pane="about">
+          <h3>关于</h3>
+          <div class="about-text">
+            <div class="about-title">UNO 联机版</div>
+            基于 PeerJS + WebRTC 构建<br>
+            无需服务器 · 完全免费<br>
+            <div style="height:1px;background:rgba(255,255,255,.08);margin:10px 0"></div>
+            © 2024 TYDS2013<br>
+            保留所有权利 · All Rights Reserved
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 房间 ================= -->
   <section id="room" class="screen">
     <div class="room-head">
       <div class="label" id="roomLabel">房 间 号</div>
@@ -63,8 +146,8 @@
     <div id="waitTip" class="hint" style="display:none">等待房主开始…</div>
   </section>
 
+  <!-- ================= 游戏 ================= -->
   <section id="game" class="screen">
-    <!-- 圆圈布局容器 -->
     <div id="circleArena">
       <div id="opponents"></div>
       <div id="table">
@@ -86,6 +169,7 @@
   </section>
 </div>
 
+<!-- 顶部悬浮按钮 -->
 <div id="topBarLeft">
   <button id="exitBtn" class="top-btn">←</button>
   <button id="rulesBtn" class="top-btn">📋</button>
@@ -93,6 +177,7 @@
 <button id="guideBtn" class="top-btn">❓</button>
 <button id="chatToggleBtn">💬<span id="chatBadge" class="chat-badge">0</span></button>
 
+<!-- 聊天面板 -->
 <div id="chatPanel">
   <div class="chat-header">
     <span>聊 天</span>
@@ -114,6 +199,19 @@
   </div>
 </div>
 
+<!-- 首次进入：创建账户 -->
+<div id="setupModal" class="overlay">
+  <div class="picker-box">
+    <div class="picker-title">🎉 欢迎来到 UNO</div>
+    <div class="setup-hint">请先设置你的昵称</div>
+    <input id="setupNameInput" placeholder="输入昵称（最多 8 字）" maxlength="8" autocomplete="off">
+    <div class="setup-hint">选择一个头像</div>
+    <div class="avatar-picker-inline" id="avatarPickerSetup"></div>
+    <button id="setupConfirmBtn" class="btn-primary" style="max-width:none;width:100%">开始游戏</button>
+  </div>
+</div>
+
+<!-- 弹窗们 -->
 <div id="colorPicker" class="overlay">
   <div class="picker-box">
     <div class="picker-title">选择颜色</div>
@@ -152,47 +250,6 @@
   </div>
 </div>
 
-<div id="settingsPanel" class="overlay">
-  <div class="settings-box">
-    <div class="settings-title">设 置</div>
-    <div class="setting-item">
-      <div class="setting-label"><span>你的头像</span></div>
-      <div class="avatar-picker-inline" id="avatarPickerSettings"></div>
-    </div>
-    <div class="setting-item">
-      <div class="setting-label"><span>音量</span><span class="setting-value"><span id="volumeValue">100</span>%</span></div>
-      <div class="slider-row">
-        <span style="color:#9fc2b5">🔈</span>
-        <input type="range" id="volumeSlider" min="0" max="100" value="100">
-        <span style="color:#9fc2b5">🔊</span>
-      </div>
-    </div>
-    <div class="setting-item">
-      <div class="setting-label"><span>字体大小</span><span class="setting-value"><span id="fontValue">100</span>%</span></div>
-      <div class="slider-row">
-        <span style="color:#9fc2b5;font-size:12px">A</span>
-        <input type="range" id="fontSlider" min="80" max="160" value="100">
-        <span style="color:#9fc2b5;font-size:20px">A</span>
-      </div>
-    </div>
-    <div class="setting-item">
-      <div class="setting-label"><span>备用信令服务器地址（可选）</span></div>
-      <input type="text" id="vercelHostInput" placeholder="留空则使用内置地址"
-             style="max-width:none;text-align:left;font-size:13px;padding:10px 12px">
-    </div>
-    <div class="setting-item">
-      <div class="setting-label"><span>关于</span></div>
-      <div class="about-text">
-        <div class="about-title">UNO 联机版</div>
-        基于 PeerJS + WebRTC 构建<br>无需服务器 · 完全免费<br>
-        <div style="height:1px;background:rgba(255,255,255,.08);margin:8px 0"></div>
-        © 2024 TYDS2013<br>保留所有权利 · All Rights Reserved
-      </div>
-    </div>
-    <button id="settingsCloseBtn" class="btn-primary" style="max-width:none">关闭</button>
-  </div>
-</div>
-
 <div id="rulesPanel" class="overlay">
   <div class="settings-box">
     <div class="settings-title">房 规</div>
@@ -201,7 +258,7 @@
       <div class="mode-group">
         <label class="mode-option" data-mode="single"><input type="radio" name="gameMode" value="single"><span class="mode-check"></span><span>单局制</span></label>
         <label class="mode-option" data-mode="score"><input type="radio" name="gameMode" value="score"><span class="mode-check"></span><span>累积 500 分</span></label>
-        <label class="mode-option" data-mode="elimination"><input type="radio" name="gameMode" value="elimination"><span class="mode-check"></span><span>淘汰制 · 输家观战</span></label>
+        <label class="mode-option" data-mode="elimination"><input type="radio" name="gameMode" value="elimination"><span class="mode-check"></span><span>淘汰制</span></label>
       </div>
     </div>
     <div class="rule-row">
@@ -217,7 +274,7 @@
       <label class="toggle-switch"><input type="checkbox" id="ruleSevenZero"><span class="toggle-slider"></span></label>
     </div>
     <div class="rule-row">
-      <div><div class="rule-label">+4 质疑</div><div class="rule-desc">关闭后 +4 直接罚抽 4 张</div></div>
+      <div><div class="rule-label">+4 质疑</div><div class="rule-desc">关闭后直接罚抽</div></div>
       <label class="toggle-switch"><input type="checkbox" id="ruleChallenge"><span class="toggle-slider"></span></label>
     </div>
     <button id="rulesCloseBtn" class="btn-primary" style="max-width:none">保存</button>
@@ -226,7 +283,7 @@
 
 <div id="aiConfigPanel" class="overlay">
   <div class="settings-box">
-    <div class="settings-title">🤖 人机对战</div>
+    <div class="settings-title">🤖 人机对决</div>
     <div class="setting-item">
       <div class="setting-label"><span>玩家人数（含你）</span></div>
       <div class="mode-group">
@@ -248,59 +305,24 @@
   </div>
 </div>
 
-<div id="matchConfigPanel" class="overlay">
-  <div class="settings-box">
-    <div class="settings-title">🎲 随机匹配</div>
-    <div class="setting-hint" style="font-size:13px;color:#9fc2b5;text-align:center;line-height:1.7;margin-bottom:8px">
-      进入大厅后自动匹配，满 2 人即可开局<br>最多 10 人同场竞技
-    </div>
-    <button id="matchPeerBtn" class="btn-primary" style="max-width:none;width:100%">🌐 官方大厅</button>
-    <button id="matchVercelBtn" class="btn-primary" style="max-width:none;width:100%;background:linear-gradient(135deg,#e6a800,#d98c00);margin-top:10px">☁️ 备用大厅</button>
-    <button id="matchCancelBtn" class="btn-secondary" style="width:100%;margin-top:10px">取消</button>
-  </div>
-</div>
-
 <div id="guidePanel" class="overlay">
   <div class="guide-box">
     <div class="settings-title">📖 玩法指南</div>
     <div class="guide-section">
       <div class="guide-h">🎯 游戏目标</div>
-      <div class="guide-p">
-        率先打光自己的手牌。三种模式：<br>
-        • <b>单局制</b>：一局定胜负<br>
-        • <b>计分制</b>：每局赢家按输家手牌计分，累积 <b>500 分</b> 获胜<br>
-        • <b>淘汰制</b>：每局结束后手牌分最高的玩家出局进入观战
-      </div>
+      <div class="guide-p">率先打光手牌。三种模式：单局制 / 计分制（500分获胜）/ 淘汰制（输家出局）。</div>
     </div>
     <div class="guide-section">
       <div class="guide-h">🎴 牌面说明</div>
-      <div class="guide-p">
-        • <b>数字牌</b>：红/黄/绿/蓝，0-9<br>
-        • <b>禁止 ⊘</b>：下家跳过<br>
-        • <b>反转 ⇄</b>：出牌方向颠倒<br>
-        • <b>+2</b>：下家摸 2 张并跳过<br>
-        • <b>变色 ★</b>：出牌后指定颜色<br>
-        • <b>+4</b>：指定颜色，下家摸 4 张并跳过
-      </div>
+      <div class="guide-p">数字牌 · 禁止⊘ · 反转⇄ · +2 · 变色★ · +4</div>
     </div>
     <div class="guide-section">
-      <div class="guide-h">🕹 操作方式</div>
-      <div class="guide-p">
-        • <b>出牌</b>：轮到你时，可出的牌会浮起发光，点一下打出<br>
-        • <b>摸牌</b>：点击中间的牌堆摸一张<br>
-        • <b>UNO</b>：剩 1 张牌时点红色「UNO!」按钮（有 2 秒保护期）<br>
-        • <b>抓 UNO</b>：对手剩 1 张牌但忘了喊 UNO，点「抓 UNO」
-      </div>
+      <div class="guide-h">🕹 操作</div>
+      <div class="guide-p">点可出的牌 → 出牌；点牌堆 → 摸牌；剩 1 张牌点「UNO!」；对手忘喊点「抓 UNO」。</div>
     </div>
     <div class="guide-section">
-      <div class="guide-h">⌨️ 键盘快捷键</div>
-      <div class="guide-p">
-        • <b>1-9</b>：出第 N 张手牌<br>
-        • <b>空格</b>：摸牌<br>
-        • <b>回车</b>：跳过<br>
-        • <b>U</b>：喊 UNO<br>
-        • <b>K</b>：抓 UNO
-      </div>
+      <div class="guide-h">⌨️ 快捷键</div>
+      <div class="guide-p">1-9 出牌 · 空格 摸牌 · 回车 跳过 · U 喊 UNO · K 抓 UNO</div>
     </div>
     <button id="guideCloseBtn" class="btn-primary" style="max-width:none">我知道了</button>
   </div>
